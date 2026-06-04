@@ -1,0 +1,33 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Pulumi
+*.yaml.bak
+.pulumi/
+Pulumi.*.yaml
+!Pulumi.yaml
