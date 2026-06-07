@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -38,6 +38,14 @@ import { WEEKS } from "@/lib/mock-data";
 type ViewMode = "table" | "sideBySide";
 
 export default function ReviewPage() {
+  return (
+    <Suspense fallback={<div className="animate-fade-in"><PageHeader title="Review Submissions" description="Loading..." /><TableSkeleton /></div>}>
+      <ReviewPageContent />
+    </Suspense>
+  );
+}
+
+function ReviewPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const uploadId = searchParams.get("uploadId");
