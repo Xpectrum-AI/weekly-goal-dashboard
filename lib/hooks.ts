@@ -80,7 +80,7 @@ export function useScope(): Scope {
       people: scopePeople(allPeople, viewer),
       submissions: scopeSubmissions(allSubs, viewer, allPeople),
       roster: scopeRoster(buildRoster(allSubs, allPeople), viewer, allPeople),
-      leaders: leaders(allPeople, allSubs),
+      leaders: leaders(allPeople),
       label: viewer ? `${viewer.name} · ${viewer.title}` : "Organization-wide",
       isOrgWide: !viewer || isTopLeader(viewer),
     };
