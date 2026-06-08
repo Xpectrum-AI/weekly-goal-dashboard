@@ -37,10 +37,10 @@ export default function MissingPage() {
   const sendNudge = async (personId: string, name: string, phone: string) => {
     setSendingTo(personId);
     try {
-      const res = await fetch("https://graph.facebook.com/v23.0/738320562700409/messages", {
+      const res = await fetch("https://graph.facebook.com/v23.0/1139797872553332/messages", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer EAA66pZAqI130BRmCj8wXFayUPxf4Bl4c2ofEGd5x5k4HD9Prg5tFjnQqwm6tJDXhSNrzicr6PUiy4r1iJLdQ6fF6AlVA7I7YMrdt5fmf0cwK3ZB7lKZBrhZADqIwDgiZAKGoudtbvxyRtKFdfOSTvJg3LdXOQmdAWOrvbaEsnZCYP5gPSumiAnL2TbFaJZCGijM",
+          "Authorization": "Bearer EAA66pZAqI130BRgV7FrZBIGpjpx3ScLZCdouf4u783MQ8Kkgr4AEOIaXaJHHZCwAhFhteVLnL3OwYITvv5kqZCYzgd6n840Jh08kERjvNXQuU1nq63oVeHxRdDINZBuUZCckpmjwGUByZB4HZBmzkY7Rjye8UFjgqElTC4LGij9ojhe6ac0WRKWjdqNaZCZCPL2w5MekvrBj7WzUjyGgdRrtJLFqZCKZBQ7RdDepPR4bj",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -48,7 +48,7 @@ export default function MissingPage() {
           to: phone.replace(/[^0-9+]/g, ""),
           type: "template",
           template: {
-            name: "goal_alignment",
+            name: "goal_alignment_v3",
             language: { code: "en" },
             components: [
               {
@@ -60,10 +60,7 @@ export default function MissingPage() {
               {
                 type: "button",
                 sub_type: "flow",
-                index: "0",
-                parameters: [
-                  { type: "action", action: { flow_token: "goal_alignment_001" } }
-                ]
+                index: "0"
               }
             ]
           }
