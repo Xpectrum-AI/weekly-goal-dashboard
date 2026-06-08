@@ -1,4 +1,4 @@
-export { CURRENT_WEEK } from "./mock-data";
+export { getCurrentWeek as CURRENT_WEEK } from "./utils";
 
 /** Avatar color palette for newly created people. */
 export const PALETTE = [

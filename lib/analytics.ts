@@ -5,7 +5,6 @@ import type {
   Theme,
   WeeklyInsight,
 } from "./types";
-import { WEEKS, CURRENT_WEEK } from "./mock-data";
 import { scoreSubmission, classifyBlocker, classifyPriority } from "./scoring";
 import { weekNum } from "./utils";
 
@@ -189,7 +188,7 @@ export interface PersonConsistency {
 export function personConsistency(
   person: Person,
   subs: WeeklySubmission[],
-  weeks = WEEKS
+  weeks: string[] = []
 ): PersonConsistency {
   const mine = subs.filter((s) => belongsTo(s, person));
   const joinedWeek = isoWeekFromDate(person.joinedAt);
@@ -209,21 +208,17 @@ export function personConsistency(
 }
 
 function isoWeekFromDate(date: string): string {
-  // Rough mapping for the demo window; anyone who joined before W18 counts from W18.
   const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return WEEKS[0];
-  const map: { before: string; week: string }[] = [
-    { before: "2026-04-27", week: "2026-W18" },
-    { before: "2026-05-04", week: "2026-W19" },
-    { before: "2026-05-11", week: "2026-W20" },
-    { before: "2026-05-18", week: "2026-W21" },
-    { before: "2026-05-25", week: "2026-W22" },
-    { before: "2026-06-01", week: "2026-W23" },
-  ];
-  for (const m of map) {
-    if (date >= m.before && date < bump(m.before)) return m.week;
-  }
-  return date < "2026-04-27" ? WEEKS[0] : CURRENT_WEEK;
+  if (Number.isNaN(d.getTime())) return "2026-W01";
+  
+  // Calculate ISO week number
+  const year = d.getFullYear();
+  const dayNum = d.getDay() || 7;
+  const dt = new Date(d);
+  dt.setDate(dt.getDate() + 4 - dayNum);
+  const yearStart = new Date(dt.getFullYear(), 0, 1);
+  const weekNo = Math.ceil(((dt.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${year}-W${String(weekNo).padStart(2, "0")}`;
 }
 function bump(d: string): string {
   const dt = new Date(d);
@@ -241,9 +236,9 @@ export interface TrendPoint {
   blockers: number;
 }
 
-export function submissionTrend(people: Person[], subs: WeeklySubmission[], weeks = WEEKS): TrendPoint[] {
+export function submissionTrend(people: Person[], subs: WeeklySubmission[], weeks: string[] = []): TrendPoint[] {
   const expected = activePeople(people).length;
-  return weeks.map((week) => {
+  return weeks.map((week: string) => {
     const ws = subs.filter((s) => s.week === week);
     return {
       week,

@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useStore } from "./store";
-import { weekNum } from "./utils";
-import { WEEKS, CURRENT_WEEK } from "./mock-data";
+import { weekNum, getCurrentWeek } from "./utils";
 import {
   buildRoster,
   scopeSubmissions,
@@ -45,8 +44,10 @@ export function useWeeks(): {
     submissions.forEach((s) => s.week && set.add(s.week));
     insights.forEach((i) => i.week && set.add(i.week));
     const weeks = [...set].sort((a, b) => weekNum(a) - weekNum(b));
+    // If no data from MongoDB, use current week as fallback
+    const dynamicCurrentWeek = getCurrentWeek();
     if (weeks.length === 0) {
-      return { weeks: WEEKS, currentWeek: selectedWeek ?? CURRENT_WEEK, selectedWeek, setSelectedWeek };
+      return { weeks: [], currentWeek: selectedWeek ?? dynamicCurrentWeek, selectedWeek, setSelectedWeek };
     }
     const latestWeek = weeks[weeks.length - 1];
     return {

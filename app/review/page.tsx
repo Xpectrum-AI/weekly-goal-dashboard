@@ -30,10 +30,9 @@ import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks } from "@/lib/hooks";
 import { api } from "@/lib/api";
-import { weekLabel, cn } from "@/lib/utils";
+import { weekLabel, cn, getCurrentWeek } from "@/lib/utils";
 import { exportExtractedSubmissionsCSV } from "@/lib/export";
 import type { ExtractedSubmission, Upload, ValidationIssue, Person } from "@/lib/types";
-import { WEEKS } from "@/lib/mock-data";
 
 type ViewMode = "table" | "sideBySide";
 
@@ -673,7 +672,7 @@ function SubmissionDetail({
                       onChange={(e) => setDraft((d) => ({ ...d, week: e.target.value }))}
                     >
                       <option value="">— Select week —</option>
-                      {WEEKS.map((w) => (
+                      {(weeks.includes(draft.week) ? weeks : [draft.week, ...weeks].filter(Boolean)).map((w) => (
                         <option key={w} value={w}>{weekLabel(w)}</option>
                       ))}
                     </Select>

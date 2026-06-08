@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertOctagon, Flag, Repeat, MessageCircle, Download } from "lucide-react";
+import { AlertOctagon, Flag, Repeat, MessageCircle, Download, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
@@ -11,11 +11,9 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Select } from "@/components/ui/Form";
 import { useStore } from "@/lib/store";
-import { useLoaded, useWeeks, useScope, useThemeIndex, useInsightForWeek } from "@/lib/hooks";
+import { useLoaded, useWeeks, useScope, useInsightForWeek } from "@/lib/hooks";
 import {
   rawBlockers,
-  priorityThemesScoped,
-  blockerThemesScoped,
   combineThemes,
 } from "@/lib/analytics";
 import { repeatedBlockerSubmitters } from "@/lib/org";
@@ -26,7 +24,6 @@ export default function BlockersPage() {
   const hydrated = useLoaded();
   const { submissions, isOrgWide } = useScope();
   const insights = useStore((s) => s.insights);
-  const themeIdx = useThemeIndex();
   const { weeks } = useWeeks();
   const [week, setWeek] = useState("all");
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -39,17 +36,18 @@ export default function BlockersPage() {
     [submissions, week]
   );
 
-  // Org-wide: use the rich AI themes stored in weekly_insights (their submission
-  // ids don't map 1:1 to the live docs, so they only re-aggregate at org scope).
-  // Scoped to a leader: fall back to keyword classification of the scoped text.
+  // Only use AI themes from stored insights in MongoDB - no fallback
   const relevant = week === "all" ? insights : insights.filter((i) => i.week === week);
+  const hasInsights = relevant.length > 0;
+  
   const aiBlocker = combineThemes(relevant.map((i) => i.blockerThemes)).filter(
     (t) => t.theme && t.theme.toLowerCase() !== "no blocker"
   );
   const aiPriority = combineThemes(relevant.map((i) => i.priorityThemes)).filter((t) => t.theme);
 
-  const bThemes = isOrgWide && aiBlocker.length ? aiBlocker : blockerThemesScoped(scoped, themeIdx);
-  const pThemes = isOrgWide && aiPriority.length ? aiPriority : priorityThemesScoped(scoped, themeIdx);
+  // Only show themes from MongoDB - no local fallback
+  const bThemes = hasInsights ? aiBlocker : [];
+  const pThemes = hasInsights ? aiPriority : [];
   const raw = rawBlockers(scoped);
   const repeats = repeatedBlockerSubmitters(scoped);
   
@@ -125,6 +123,8 @@ export default function BlockersPage() {
           <CardBody>
             {!hydrated ? (
               <Skeleton className="h-[220px]" />
+            ) : !hasInsights ? (
+              <EmptyState icon={Sparkles} title="Insights not generated" description="Generate insights to see AI-derived blocker themes" />
             ) : bThemes.length === 0 ? (
               <EmptyState icon={Flag} title="No blockers reported" description="Teams are unblocked for this period." />
             ) : (
@@ -151,8 +151,10 @@ export default function BlockersPage() {
           <CardBody>
             {!hydrated ? (
               <Skeleton className="h-[220px]" />
+            ) : !hasInsights ? (
+              <EmptyState icon={Sparkles} title="Insights not generated" description="Generate insights to see AI-derived priority themes" />
             ) : pThemes.length === 0 ? (
-              <EmptyState icon={Flag} title="No priorities stated" />
+              <EmptyState icon={Flag} title="No priorities found" description="No priority themes detected" />
             ) : (
               <div className="space-y-3">
                 {pThemes.map((t) => {

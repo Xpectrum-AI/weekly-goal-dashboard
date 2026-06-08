@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { WeeklySubmission, Person } from "./types";
-import { WEEKS, CURRENT_WEEK } from "./mock-data";
+import { getCurrentWeek } from "./utils";
 
 export type TargetCollection = "weekly_submissions" | "people";
 
@@ -74,10 +74,14 @@ function normalizeWeek(v: string): string {
   const s = (v || "").trim();
   const ww = s.match(/W?\s*(\d{1,2})/i);
   if (ww) {
-    const candidate = `2026-W${ww[1].padStart(2, "0")}`;
-    if (WEEKS.includes(candidate)) return candidate;
+    const weekNum = parseInt(ww[1], 10);
+    // Accept any week 1-53
+    if (weekNum >= 1 && weekNum <= 53) {
+      const year = new Date().getFullYear();
+      return `${year}-W${String(weekNum).padStart(2, "0")}`;
+    }
   }
-  return CURRENT_WEEK;
+  return getCurrentWeek();
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────

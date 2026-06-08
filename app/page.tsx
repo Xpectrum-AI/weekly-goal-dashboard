@@ -24,12 +24,10 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { TrendArea } from "@/components/charts/Charts";
-import { useLoaded, useWeeks, useScope, useThemeIndex, useInsightForWeek, useInsightsForWeeks } from "@/lib/hooks";
+import { useLoaded, useWeeks, useScope, useInsightForWeek, useInsightsForWeeks } from "@/lib/hooks";
 import {
   recentSubmissions,
   weakSubmissions,
-  avgCompleteness,
-  priorityThemesScoped,
 } from "@/lib/analytics";
 import { rosterCompliance, missingSubmitters } from "@/lib/org";
 import { weekLabel, weekShort } from "@/lib/utils";
@@ -37,7 +35,6 @@ import { weekLabel, weekShort } from "@/lib/utils";
 export default function OverviewPage() {
   const hydrated = useLoaded();
   const { submissions, roster, label, isOrgWide } = useScope();
-  const themeIdx = useThemeIndex();
   const { weeks, currentWeek, setSelectedWeek } = useWeeks();
   const storedInsight = useInsightForWeek(currentWeek);
   const allInsights = useInsightsForWeeks(weeks);
@@ -105,8 +102,11 @@ export default function OverviewPage() {
 
   const thisWeek = submissions.filter((s) => s.week === currentWeek);
   
-  // Use stored insight metrics when available (org-wide), otherwise fall back to live calculation
-  const c = (storedInsight && isOrgWide)
+  // Use stored insight metrics when available (org-wide)
+  // If no stored insight exists, show "not generated" state for AI-derived metrics
+  const hasStoredInsight = storedInsight && isOrgWide;
+  
+  const c = hasStoredInsight
     ? {
         expected: storedInsight.expected,
         received: storedInsight.received,
@@ -115,20 +115,20 @@ export default function OverviewPage() {
       }
     : rosterCompliance(roster, submissions, currentWeek);
   
-  const avgComplete = (storedInsight && isOrgWide) ? storedInsight.avgCompleteness : avgCompleteness(thisWeek);
-  const blockerCount = (storedInsight && isOrgWide) ? storedInsight.blockerCount : thisWeek.reduce((a, s) => a + s.blockers.length, 0);
+  const avgComplete = hasStoredInsight ? storedInsight.avgCompleteness : null;
+  const blockerCount = hasStoredInsight ? storedInsight.blockerCount : thisWeek.reduce((a, s) => a + s.blockers.length, 0);
   
   // Keep the full array for displaying in the UI, but use stored count for KPI if available
   const weakThisWeek = weakSubmissions(thisWeek);
-  const weakCount = (storedInsight && isOrgWide) ? storedInsight.weakCount : weakThisWeek.length;
+  const weakCount = hasStoredInsight ? storedInsight.weakCount : weakThisWeek.length;
   
-  // Use stored AI-derived priority themes when available
-  const pThemes = (storedInsight && isOrgWide) ? storedInsight.priorityThemes : priorityThemesScoped(thisWeek, themeIdx);
+  // Use stored AI-derived priority themes when available (only from MongoDB)
+  const pThemes = hasStoredInsight ? storedInsight.priorityThemes : [];
   
   const recent = recentSubmissions(submissions, 7);
   const missing = missingSubmitters(roster, submissions, currentWeek);
   
-  // Build trend using stored insights when available (org-wide), otherwise fall back to live calculation
+  // Build trend using stored insights when available (org-wide)
   const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
   const trend = weeks.map((w) => {
     const insight = insightByWeek.get(w);
@@ -230,7 +230,14 @@ export default function OverviewPage() {
             <KpiCard label="Submission compliance" value={c.rate} suffix="%" icon={MessageCircle} tone="emerald" deltaLabel={`${c.received} of ${c.expected} submitted`} />
             <KpiCard label="Missing updates" value={c.missing} icon={UserX} tone="amber" deltaLabel={`for ${weekLabel(currentWeek)}`} />
             <KpiCard label="Blockers raised" value={blockerCount} icon={AlertOctagon} tone="rose" deltaLabel="this week" />
-            <KpiCard label="Response completeness" value={avgComplete} suffix="%" icon={GaugeCircle} tone="brand" deltaLabel={`${weakCount} weak / vague`} />
+            <KpiCard 
+              label="Response completeness" 
+              value={avgComplete !== null ? avgComplete : "—"} 
+              suffix={avgComplete !== null ? "%" : ""} 
+              icon={GaugeCircle} 
+              tone="brand" 
+              deltaLabel={avgComplete !== null ? `${weakCount} weak / vague` : "Generate insights"} 
+            />
           </>
         )}
       </div>
@@ -246,8 +253,10 @@ export default function OverviewPage() {
         <Card>
           <CardHeader title="Top priority theme" subtitle={weekLabel(currentWeek)} action={<Flag size={16} className="text-ink-300" />} />
           <CardBody>
-            {pThemes.length === 0 ? (
-              <EmptyState icon={Flag} title="No priorities yet" />
+            {!hasStoredInsight ? (
+              <EmptyState icon={Sparkles} title="Insights not generated" description="Click 'Generate Insights' to analyze themes" />
+            ) : pThemes.length === 0 ? (
+              <EmptyState icon={Flag} title="No priorities found" description="No priority themes detected in submissions" />
             ) : (
               <>
                 <div className="mb-4">

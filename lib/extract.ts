@@ -1,7 +1,6 @@
 import * as XLSX from "xlsx";
 import type { Person, ExtractedSubmission, ValidationIssue, ValidationStatus, Upload } from "./types";
-import { WEEKS, CURRENT_WEEK } from "./mock-data";
-import { uid } from "./utils";
+import { uid, getCurrentWeek } from "./utils";
 
 // ── Field definitions for extraction ────────────────────────────────────────
 export interface FieldDef {
@@ -340,6 +339,7 @@ const splitList = (v: string): string[] => {
 // ── Normalize week string ───────────────────────────────────────────────────
 function normalizeWeek(v: string): { week: string; detected: boolean } {
   const s = (v || "").toString().trim();
+  const currentYear = new Date().getFullYear();
   
   if (!s) return { week: "", detected: false };
   
@@ -347,8 +347,6 @@ function normalizeWeek(v: string): { week: string; detected: boolean } {
   const iso = s.match(/(\d{4})-W(\d{1,2})/i);
   if (iso) {
     const candidate = `${iso[1]}-W${iso[2].padStart(2, "0")}`;
-    if (WEEKS.includes(candidate)) return { week: candidate, detected: true };
-    // If year is current, still accept
     return { week: candidate, detected: true };
   }
   
@@ -357,7 +355,7 @@ function normalizeWeek(v: string): { week: string; detected: boolean } {
   if (weekWord) {
     const weekNum = parseInt(weekWord[1], 10);
     if (weekNum >= 1 && weekNum <= 53) {
-      const candidate = `2026-W${String(weekNum).padStart(2, "0")}`;
+      const candidate = `${currentYear}-W${String(weekNum).padStart(2, "0")}`;
       return { week: candidate, detected: true };
     }
   }
@@ -367,7 +365,7 @@ function normalizeWeek(v: string): { week: string; detected: boolean } {
   if (ww) {
     const weekNum = parseInt(ww[1], 10);
     if (weekNum >= 1 && weekNum <= 53) {
-      const candidate = `2026-W${String(weekNum).padStart(2, "0")}`;
+      const candidate = `${currentYear}-W${String(weekNum).padStart(2, "0")}`;
       return { week: candidate, detected: true };
     }
   }
@@ -377,7 +375,7 @@ function normalizeWeek(v: string): { week: string; detected: boolean } {
   if (num) {
     const weekNum = parseInt(num[1], 10);
     if (weekNum >= 1 && weekNum <= 53) {
-      const candidate = `2026-W${String(weekNum).padStart(2, "0")}`;
+      const candidate = `${currentYear}-W${String(weekNum).padStart(2, "0")}`;
       return { week: candidate, detected: true };
     }
   }
@@ -387,7 +385,7 @@ function normalizeWeek(v: string): { week: string; detected: boolean } {
   if (anyNum) {
     const weekNum = parseInt(anyNum[1], 10);
     if (weekNum >= 1 && weekNum <= 53) {
-      const candidate = `2026-W${String(weekNum).padStart(2, "0")}`;
+      const candidate = `${currentYear}-W${String(weekNum).padStart(2, "0")}`;
       return { week: candidate, detected: true };
     }
   }

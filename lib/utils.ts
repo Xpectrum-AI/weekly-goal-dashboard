@@ -34,6 +34,19 @@ export function weekNum(week: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
+/** Get the current ISO week string e.g. "2026-W24" */
+export function getCurrentWeek(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  // Calculate ISO week number
+  const d = new Date(Date.UTC(year, now.getMonth(), now.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
 export function formatDate(iso: string): string {
   if (!iso) return "—";
   const d = new Date(iso);

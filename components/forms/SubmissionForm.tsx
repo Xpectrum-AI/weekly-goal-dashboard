@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { CURRENT_WEEK } from "@/lib/mock-data";
 import { useWeeks } from "@/lib/hooks";
 import { Field, TextInput, TextArea, Select } from "@/components/ui/Form";
-import { weekLabel } from "@/lib/utils";
+import { weekLabel, getCurrentWeek } from "@/lib/utils";
 import type { WeeklySubmission } from "@/lib/types";
 
 export type SubmissionDraft = Omit<WeeklySubmission, "_id">;
@@ -22,7 +21,7 @@ export function emptySubmission(person?: {
     personName: person?.name ?? "",
     department: person?.department ?? "",
     teamLead: person?.teamLead ?? "",
-    week: week ?? CURRENT_WEEK,
+    week: week ?? getCurrentWeek(),
     submittedAt: new Date().toISOString(),
     topPriority: "",
     actions: [],
