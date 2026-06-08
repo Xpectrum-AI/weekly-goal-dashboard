@@ -29,7 +29,7 @@ import {
   recentSubmissions,
   weakSubmissions,
 } from "@/lib/analytics";
-import { rosterCompliance, missingSubmitters } from "@/lib/org";
+import { missingSubmitters } from "@/lib/org";
 import { weekLabel, weekShort } from "@/lib/utils";
 
 export default function OverviewPage() {
@@ -102,8 +102,7 @@ export default function OverviewPage() {
 
   const thisWeek = submissions.filter((s) => s.week === currentWeek);
   
-  // Use stored insight metrics when available (org-wide)
-  // If no stored insight exists, show "not generated" state for AI-derived metrics
+  // Only use stored insight metrics from MongoDB - no fallback
   const hasStoredInsight = storedInsight && isOrgWide;
   
   const c = hasStoredInsight
@@ -113,14 +112,14 @@ export default function OverviewPage() {
         missing: storedInsight.missing,
         rate: storedInsight.complianceRate,
       }
-    : rosterCompliance(roster, submissions, currentWeek);
+    : { expected: 0, received: 0, missing: 0, rate: 0 };
   
   const avgComplete = hasStoredInsight ? storedInsight.avgCompleteness : null;
-  const blockerCount = hasStoredInsight ? storedInsight.blockerCount : thisWeek.reduce((a, s) => a + s.blockers.length, 0);
+  const blockerCount = hasStoredInsight ? storedInsight.blockerCount : null;
   
-  // Keep the full array for displaying in the UI, but use stored count for KPI if available
+  // Keep the full array for displaying in the UI
   const weakThisWeek = weakSubmissions(thisWeek);
-  const weakCount = hasStoredInsight ? storedInsight.weakCount : weakThisWeek.length;
+  const weakCount = hasStoredInsight ? storedInsight.weakCount : null;
   
   // Use stored AI-derived priority themes when available (only from MongoDB)
   const pThemes = hasStoredInsight ? storedInsight.priorityThemes : [];
@@ -128,11 +127,11 @@ export default function OverviewPage() {
   const recent = recentSubmissions(submissions, 7);
   const missing = missingSubmitters(roster, submissions, currentWeek);
   
-  // Build trend using stored insights when available (org-wide)
+  // Build trend using only stored insights from MongoDB
   const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
   const trend = weeks.map((w) => {
     const insight = insightByWeek.get(w);
-    const received = (insight && isOrgWide) ? insight.received : rosterCompliance(roster, submissions, w).received;
+    const received = insight ? insight.received : 0;
     return { week: weekShort(w), received };
   });
 
@@ -227,9 +226,28 @@ export default function OverviewPage() {
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[132px]" />)
         ) : (
           <>
-            <KpiCard label="Submission compliance" value={c.rate} suffix="%" icon={MessageCircle} tone="emerald" deltaLabel={`${c.received} of ${c.expected} submitted`} />
-            <KpiCard label="Missing updates" value={c.missing} icon={UserX} tone="amber" deltaLabel={`for ${weekLabel(currentWeek)}`} />
-            <KpiCard label="Blockers raised" value={blockerCount} icon={AlertOctagon} tone="rose" deltaLabel="this week" />
+            <KpiCard 
+              label="Submission compliance" 
+              value={hasStoredInsight ? c.rate : "—"} 
+              suffix={hasStoredInsight ? "%" : ""} 
+              icon={MessageCircle} 
+              tone="emerald" 
+              deltaLabel={hasStoredInsight ? `${c.received} of ${c.expected} submitted` : "Generate insights"} 
+            />
+            <KpiCard 
+              label="Missing updates" 
+              value={hasStoredInsight ? c.missing : "—"} 
+              icon={UserX} 
+              tone="amber" 
+              deltaLabel={hasStoredInsight ? `for ${weekLabel(currentWeek)}` : "Generate insights"} 
+            />
+            <KpiCard 
+              label="Blockers raised" 
+              value={blockerCount !== null ? blockerCount : "—"} 
+              icon={AlertOctagon} 
+              tone="rose" 
+              deltaLabel={blockerCount !== null ? "this week" : "Generate insights"} 
+            />
             <KpiCard 
               label="Response completeness" 
               value={avgComplete !== null ? avgComplete : "—"} 

@@ -9,7 +9,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Ring } from "@/components/ui/Progress";
 import { EmptyState } from "@/components/ui/States";
 import { useLoaded, useWeeks, useScope, useInsightForWeek, useInsightsForWeeks } from "@/lib/hooks";
-import { rosterCompliance, missingSubmitters } from "@/lib/org";
+import { missingSubmitters } from "@/lib/org";
 import { exportMissingCSV } from "@/lib/export";
 import type { Submitter } from "@/lib/org";
 import { weekLabel, weekShort, cn } from "@/lib/utils";
@@ -76,28 +76,28 @@ export default function MissingPage() {
     }
   };
 
-  // Use stored compliance metrics when available at org level
-  const liveCompliance = rosterCompliance(roster, submissions, week);
-  const c = (storedInsight && isOrgWide)
+  // Only use stored compliance metrics from MongoDB - no fallback
+  const hasStoredInsight = storedInsight && isOrgWide;
+  const c = hasStoredInsight
     ? {
         expected: storedInsight.expected,
         received: storedInsight.received,
         missing: storedInsight.missing,
         rate: storedInsight.complianceRate,
       }
-    : liveCompliance;
+    : { expected: 0, received: 0, missing: 0, rate: 0 };
   
   const missing = missingSubmitters(roster, submissions, week);
   
-  // Build trend using stored insights when available (org-wide)
+  // Build trend using only stored insights from MongoDB
   const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
   const trend = weeks.map((w) => {
     const insight = insightByWeek.get(w);
-    if (insight && isOrgWide) {
-      return { week: w, received: insight.received, expected: insight.expected };
-    }
-    const cc = rosterCompliance(roster, submissions, w);
-    return { week: w, received: cc.received, expected: cc.expected };
+    return { 
+      week: w, 
+      received: insight ? insight.received : 0, 
+      expected: insight ? insight.expected : 0 
+    };
   });
 
   const idx = weeks.indexOf(week);

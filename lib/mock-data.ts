@@ -5,7 +5,7 @@ import type {
   ImportBatch,
   Theme,
 } from "./types";
-import { scoreSubmission, classifyBlocker, classifyPriority } from "./scoring";
+import { scoreSubmission } from "./scoring";
 
 // ── Weeks ───────────────────────────────────────────────────────────────────
 export const WEEKS = ["2026-W18", "2026-W19", "2026-W20", "2026-W21", "2026-W22", "2026-W23"];
@@ -200,16 +200,7 @@ function buildInsights(): WeeklyInsight[] {
 
     const pThemes: Record<string, number> = {};
     const bThemes: Record<string, number> = {};
-    subs.forEach((s) => {
-      if (s.topPriority.trim()) {
-        const t = classifyPriority(s.topPriority);
-        pThemes[t] = (pThemes[t] ?? 0) + 1;
-      }
-      s.blockers.forEach((b) => {
-        const t = classifyBlocker(b);
-        bThemes[t] = (bThemes[t] ?? 0) + 1;
-      });
-    });
+    // Themes now come from MongoDB AI analysis only - mock data returns empty themes
     const priorityThemes = topThemes(pThemes);
     const blockerThemes = topThemes(bThemes);
 

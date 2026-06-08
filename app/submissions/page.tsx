@@ -20,9 +20,8 @@ import { Modal, ConfirmDialog } from "@/components/ui/Modal";
 import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { SubmissionForm, emptySubmission, type SubmissionDraft } from "@/components/forms/SubmissionForm";
 import { useStore } from "@/lib/store";
-import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
+import { useLoaded, useWeeks, useFacets, useScope, useThemeIndex } from "@/lib/hooks";
 import { scoreAll } from "@/lib/analytics";
-import { classifyPriority } from "@/lib/scoring";
 import { exportSubmissionsCSV, exportSubmissionsFullCSV } from "@/lib/export";
 import { weekLabel, formatDateTime, cn } from "@/lib/utils";
 import type { WeeklySubmission, ScoredSubmission } from "@/lib/types";
@@ -32,6 +31,7 @@ export default function SubmissionsPage() {
   const { weeks, currentWeek } = useWeeks();
   const { departments, teamLeads } = useFacets();
   const { submissions, roster } = useScope();
+  const themeIdx = useThemeIndex();
   const people = useStore((s) => s.people);
   const addSubmission = useStore((s) => s.addSubmission);
   const updateSubmission = useStore((s) => s.updateSubmission);
@@ -199,8 +199,10 @@ export default function SubmissionsPage() {
                     <td className="px-3 py-3 whitespace-nowrap text-ink-600">{s.teamLead}</td>
                     <td className="px-3 py-3 whitespace-nowrap text-ink-600">{weekLabel(s.week)}</td>
                     <td className="max-w-[220px] px-3 py-3">
-                      {s.topPriority ? (
-                        <ThemeChip theme={classifyPriority(s.topPriority)} />
+                      {themeIdx.priority[s._id] ? (
+                        <ThemeChip theme={themeIdx.priority[s._id]} />
+                      ) : s.topPriority ? (
+                        <span className="text-xs text-ink-500 truncate block">{s.topPriority}</span>
                       ) : (
                         <span className="text-xs italic text-ink-300">none stated</span>
                       )}

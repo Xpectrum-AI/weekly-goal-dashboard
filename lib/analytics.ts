@@ -5,7 +5,7 @@ import type {
   Theme,
   WeeklyInsight,
 } from "./types";
-import { scoreSubmission, classifyBlocker, classifyPriority } from "./scoring";
+import { scoreSubmission } from "./scoring";
 import { weekNum } from "./utils";
 
 // ── Scoring ─────────────────────────────────────────────────────────────────
@@ -64,29 +64,7 @@ export function weakSubmissions(subs: WeeklySubmission[]): ScoredSubmission[] {
   return scoreAll(subs).filter((s) => s.status === "Weak");
 }
 
-// ── Themes ──────────────────────────────────────────────────────────────────
-export function priorityThemes(subs: WeeklySubmission[]): Theme[] {
-  const counts: Record<string, number> = {};
-  subs.forEach((s) => {
-    const tp = (s.topPriority ?? "").trim();
-    if (!tp) return;
-    const t = classifyPriority(tp);
-    counts[t] = (counts[t] ?? 0) + 1;
-  });
-  return toThemes(counts);
-}
-
-export function blockerThemes(subs: WeeklySubmission[]): Theme[] {
-  const counts: Record<string, number> = {};
-  subs.forEach((s) =>
-    (s.blockers ?? []).forEach((b) => {
-      const t = classifyBlocker(b);
-      counts[t] = (counts[t] ?? 0) + 1;
-    })
-  );
-  return toThemes(counts);
-}
-
+// ── Themes (from MongoDB only) ─────────────────────────────────────────────
 function toThemes(counts: Record<string, number>): Theme[] {
   return Object.entries(counts)
     .map(([theme, count]) => ({ theme, count }))
@@ -98,24 +76,21 @@ export interface ThemeIndex {
   blocker: Record<string, string>;
 }
 
-/** Priority themes for a scoped set of submissions, using AI themes when available. */
+/** Priority themes for a scoped set of submissions (from MongoDB themes only). */
 export function priorityThemesScoped(subs: WeeklySubmission[], idx: ThemeIndex): Theme[] {
   const counts: Record<string, number> = {};
   subs.forEach((s) => {
-    const tp = (s.topPriority ?? "").trim();
-    const t = idx.priority[s._id] ?? (tp ? classifyPriority(tp) : "");
+    const t = idx.priority[s._id];
     if (t) counts[t] = (counts[t] ?? 0) + 1;
   });
   return toThemes(counts);
 }
 
-/** Blocker themes for a scoped set (one theme per submission; "No Blocker" excluded). */
+/** Blocker themes for a scoped set (from MongoDB themes only; "No Blocker" excluded). */
 export function blockerThemesScoped(subs: WeeklySubmission[], idx: ThemeIndex): Theme[] {
   const counts: Record<string, number> = {};
   subs.forEach((s) => {
-    const blockers = s.blockers ?? [];
-    let t = idx.blocker[s._id];
-    if (!t && blockers.length) t = classifyBlocker(blockers[0]);
+    const t = idx.blocker[s._id];
     if (t && t.toLowerCase() !== "no blocker") counts[t] = (counts[t] ?? 0) + 1;
   });
   return toThemes(counts);
@@ -131,13 +106,13 @@ export interface RawBlocker {
   submittedAt: string;
 }
 
-export function rawBlockers(subs: WeeklySubmission[]): RawBlocker[] {
+export function rawBlockers(subs: WeeklySubmission[], idx: ThemeIndex): RawBlocker[] {
   const out: RawBlocker[] = [];
   subs.forEach((s) =>
     (s.blockers ?? []).forEach((b) =>
       out.push({
         text: b,
-        theme: classifyBlocker(b),
+        theme: idx.blocker[s._id] ?? "",
         personName: s.personName,
         teamLead: s.teamLead,
         department: s.department,
@@ -274,11 +249,10 @@ export function combineThemes(lists: Theme[][]): Theme[] {
 }
 
 // ── Live per-week insight (mirrors the weekly_insights collection) ──────────
+// Note: themes are always empty as they come from MongoDB AI analysis only
 export function deriveInsight(people: Person[], subs: WeeklySubmission[], week: string): WeeklyInsight {
   const c = compliance(people, subs, week);
   const ws = subs.filter((s) => s.week === week);
-  const pThemes = priorityThemes(ws);
-  const bThemes = blockerThemes(ws);
   return {
     _id: `wi_${week}`,
     week,
@@ -289,8 +263,8 @@ export function deriveInsight(people: Person[], subs: WeeklySubmission[], week: 
     blockerCount: ws.reduce((a, s) => a + s.blockers.length, 0),
     avgCompleteness: avgCompleteness(ws),
     weakCount: weakSubmissions(ws).length,
-    topPriorityTheme: pThemes[0]?.theme ?? "—",
-    priorityThemes: pThemes,
-    blockerThemes: bThemes,
+    topPriorityTheme: "—",
+    priorityThemes: [],
+    blockerThemes: [],
   };
 }

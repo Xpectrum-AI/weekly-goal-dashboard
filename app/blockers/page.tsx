@@ -11,7 +11,7 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Select } from "@/components/ui/Form";
 import { useStore } from "@/lib/store";
-import { useLoaded, useWeeks, useScope, useInsightForWeek } from "@/lib/hooks";
+import { useLoaded, useWeeks, useScope, useInsightForWeek, useThemeIndex } from "@/lib/hooks";
 import {
   rawBlockers,
   combineThemes,
@@ -24,6 +24,7 @@ export default function BlockersPage() {
   const hydrated = useLoaded();
   const { submissions, isOrgWide } = useScope();
   const insights = useStore((s) => s.insights);
+  const themeIdx = useThemeIndex();
   const { weeks } = useWeeks();
   const [week, setWeek] = useState("all");
   const [showExportMenu, setShowExportMenu] = useState(false);
@@ -48,7 +49,7 @@ export default function BlockersPage() {
   // Only show themes from MongoDB - no local fallback
   const bThemes = hasInsights ? aiBlocker : [];
   const pThemes = hasInsights ? aiPriority : [];
-  const raw = rawBlockers(scoped);
+  const raw = rawBlockers(scoped, themeIdx);
   const repeats = repeatedBlockerSubmitters(scoped);
   
   // Use stored blocker count when viewing a single week at org level
