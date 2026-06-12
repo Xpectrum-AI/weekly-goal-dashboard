@@ -315,17 +315,22 @@ export default function OverviewPage() {
             ) : (
               <ul className="divide-y divide-ink-100">
                 {recent.map((s) => (
-                  <li key={s._id} className="flex items-center gap-3 px-5 py-3">
-                    <Avatar name={s.personName} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium text-ink-800">{s.personName}</p>
-                        <span className="text-[11px] text-ink-400">{s.department}</span>
+                  <li key={s._id}>
+                    <Link
+                      href={`/submissions?person=${encodeURIComponent(s.personName)}`}
+                      className="flex items-center gap-3 px-5 py-3 transition hover:bg-ink-50/60"
+                    >
+                      <Avatar name={s.personName} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-medium text-ink-800">{s.personName}</p>
+                          <span className="text-[11px] text-ink-400">{s.department}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-ink-400">{s.topPriority || s.actions[0] || "—"}</p>
                       </div>
-                      <p className="mt-0.5 truncate text-[11px] text-ink-400">{s.topPriority || s.actions[0] || "—"}</p>
-                    </div>
-                    <span className="hidden text-[11px] text-ink-400 sm:block">{weekShort(s.week)}</span>
-                    <StatusBadge status={s.status} />
+                      <span className="hidden text-[11px] text-ink-400 sm:block">{weekShort(s.week)}</span>
+                      <StatusBadge status={s.status} />
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -341,27 +346,37 @@ export default function OverviewPage() {
             ) : (
               <ul className="divide-y divide-ink-100">
                 {missing.slice(0, 5).map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 px-5 py-2.5">
-                    <Avatar name={p.name} color={p.person?.avatarColor} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-ink-700">{p.name}</p>
-                      <p className="text-[11px] text-ink-400">{p.department} · {p.teamLead || "—"}</p>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                      <Clock size={11} /> Missing
-                    </span>
+                  <li key={p.id}>
+                    <Link
+                      href={`/missing?week=${currentWeek}`}
+                      className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-ink-50/60"
+                    >
+                      <Avatar name={p.name} color={p.person?.avatarColor} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-ink-700">{p.name}</p>
+                        <p className="text-[11px] text-ink-400">{p.department} · {p.teamLead || "—"}</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        <Clock size={11} /> Missing
+                      </span>
+                    </Link>
                   </li>
                 ))}
                 {weakThisWeek.slice(0, 3).map((s) => (
-                  <li key={s._id} className="flex items-center gap-3 px-5 py-2.5">
-                    <Avatar name={s.personName} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-ink-700">{s.personName}</p>
-                      <p className="text-[11px] text-ink-400">{s.department} · {s.teamLead}</p>
-                    </div>
-                    <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                      weak
-                    </span>
+                  <li key={s._id}>
+                    <Link
+                      href={`/submissions?person=${encodeURIComponent(s.personName)}&status=Weak`}
+                      className="flex items-center gap-3 px-5 py-2.5 transition hover:bg-ink-50/60"
+                    >
+                      <Avatar name={s.personName} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-ink-700">{s.personName}</p>
+                        <p className="text-[11px] text-ink-400">{s.department} · {s.teamLead}</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                        weak
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>

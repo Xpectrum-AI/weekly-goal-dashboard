@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { UserX, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Download } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
@@ -8,8 +9,8 @@ import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
 import { Ring } from "@/components/ui/Progress";
 import { EmptyState } from "@/components/ui/States";
-import { useLoaded, useWeeks, useScope, useInsightForWeek, useInsightsForWeeks } from "@/lib/hooks";
-import { missingSubmitters } from "@/lib/org";
+import { useLoaded, useWeeks, useScope } from "@/lib/hooks";
+import { missingSubmitters, rosterCompliance } from "@/lib/org";
 import { exportMissingCSV } from "@/lib/export";
 import type { Submitter } from "@/lib/org";
 import { weekLabel, weekShort, cn } from "@/lib/utils";
@@ -21,18 +22,23 @@ const WhatsAppIcon = ({ size = 11 }: { size?: number }) => (
 );
 
 export default function MissingPage() {
+  return (
+    <Suspense fallback={<div className="animate-fade-in"><PageHeader title="Missing Updates" description="Loading…" /></div>}>
+      <MissingPageContent />
+    </Suspense>
+  );
+}
+
+function MissingPageContent() {
+  const searchParams = useSearchParams();
   useLoaded();
-  const { roster, submissions, label, isOrgWide } = useScope();
+  const { roster, submissions, label } = useScope();
   const { weeks, currentWeek } = useWeeks();
-  const [picked, setPicked] = useState("");
+  const [picked, setPicked] = useState(() => searchParams.get("week") || "");
   const week = picked || currentWeek;
   const setWeek = setPicked;
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<Set<string>>(new Set());
-  
-  // Get stored insight for the selected week
-  const storedInsight = useInsightForWeek(week);
-  const allInsights = useInsightsForWeeks(weeks);
 
   const sendNudge = async (personId: string, name: string, phone: string) => {
     setSendingTo(personId);
@@ -76,28 +82,17 @@ export default function MissingPage() {
     }
   };
 
-  // Only use stored compliance metrics from MongoDB - no fallback
-  const hasStoredInsight = storedInsight && isOrgWide;
-  const c = hasStoredInsight
-    ? {
-        expected: storedInsight.expected,
-        received: storedInsight.received,
-        missing: storedInsight.missing,
-        rate: storedInsight.complianceRate,
-      }
-    : { expected: 0, received: 0, missing: 0, rate: 0 };
-  
+  // Compliance is grounded on the expected-submitter roster (everyone below
+  // level 3), so Expected/Missing match the list below rather than the stored
+  // MongoDB aggregate which counts all submitters.
+  const c = rosterCompliance(roster, submissions, week);
+
   const missing = missingSubmitters(roster, submissions, week);
-  
-  // Build trend using only stored insights from MongoDB
-  const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
+
+  // Build trend from the same roster so weekly bars stay consistent.
   const trend = weeks.map((w) => {
-    const insight = insightByWeek.get(w);
-    return { 
-      week: w, 
-      received: insight ? insight.received : 0, 
-      expected: insight ? insight.expected : 0 
-    };
+    const { received, expected } = rosterCompliance(roster, submissions, w);
+    return { week: w, received, expected };
   });
 
   const idx = weeks.indexOf(week);

@@ -22,9 +22,40 @@ export interface Submitter {
   person?: Person; // matched roster doc, if any
 }
 
+// Org depth at/below which people are leads/managers we do NOT expect weekly
+// updates from. We expect submissions from everyone *below* this level, i.e.
+// level > SUBMITTER_MAX_LEAD_LEVEL. Level 1 = Founder/CEO (top).
+export const SUBMITTER_MAX_LEAD_LEVEL = 3;
+
+/** Whether we expect a weekly submission from this person (below level 3). */
+export function expectsSubmission(p: Person): boolean {
+  return typeof p.level === "number" && p.level > SUBMITTER_MAX_LEAD_LEVEL;
+}
+
 export function buildRoster(subs: WeeklySubmission[], people: Person[]): Submitter[] {
-  const byName = new Map(people.map((p) => [norm(p.name), p]));
   const map = new Map<string, Submitter>();
+
+  // Expected submitters are grounded in the people collection: everyone below
+  // level 3 (level > 3). Level 1 = top of org; level ≤ 3 are leads/managers we
+  // do not expect weekly updates from.
+  const expected = people.filter(expectsSubmission);
+  if (expected.length > 0) {
+    expected.forEach((p) => {
+      const key = norm(p.name);
+      if (!key) return;
+      map.set(key, {
+        id: key,
+        name: p.name,
+        department: p.department,
+        teamLead: p.teamLead ?? "",
+        person: p,
+      });
+    });
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  // Fallback (no level data yet): derive the roster from actual submitters.
+  const byName = new Map(people.map((p) => [norm(p.name), p]));
   subs.forEach((s) => {
     const key = norm(s.personName);
     if (!key) return;

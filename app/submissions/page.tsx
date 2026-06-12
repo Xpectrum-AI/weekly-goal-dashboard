@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   MessageCircle,
   Pencil,
@@ -27,6 +28,15 @@ import { weekLabel, formatDateTime, cn } from "@/lib/utils";
 import type { WeeklySubmission, ScoredSubmission } from "@/lib/types";
 
 export default function SubmissionsPage() {
+  return (
+    <Suspense fallback={<div className="animate-fade-in"><PageHeader title="Weekly Submissions" description="Loading…" /><Card><TableSkeleton /></Card></div>}>
+      <SubmissionsPageContent />
+    </Suspense>
+  );
+}
+
+function SubmissionsPageContent() {
+  const searchParams = useSearchParams();
   const hydrated = useLoaded();
   const { weeks, currentWeek } = useWeeks();
   const { departments, teamLeads } = useFacets();
@@ -38,7 +48,16 @@ export default function SubmissionsPage() {
   const deleteSubmission = useStore((s) => s.deleteSubmission);
 
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filters, setFilters] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    const person = searchParams.get("person");
+    const status = searchParams.get("status");
+    const week = searchParams.get("week");
+    if (person) init.person = person;
+    if (status) init.status = status;
+    if (week) init.week = week;
+    return init;
+  });
   const [draft, setDraft] = useState<SubmissionDraft | null>(null);
   const [editing, setEditing] = useState<WeeklySubmission | null>(null);
   const [viewing, setViewing] = useState<ScoredSubmission | null>(null);

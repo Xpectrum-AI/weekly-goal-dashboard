@@ -43,16 +43,16 @@ export function useWeeks(): {
     const set = new Set<string>();
     submissions.forEach((s) => s.week && set.add(s.week));
     insights.forEach((i) => i.week && set.add(i.week));
-    const weeks = [...set].sort((a, b) => weekNum(a) - weekNum(b));
-    // If no data from MongoDB, use current week as fallback
+    // Always include the actual calendar week so the selector offers it and
+    // pages default to it — even before any data exists for the new week.
     const dynamicCurrentWeek = getCurrentWeek();
-    if (weeks.length === 0) {
-      return { weeks: [], currentWeek: selectedWeek ?? dynamicCurrentWeek, selectedWeek, setSelectedWeek };
-    }
-    const latestWeek = weeks[weeks.length - 1];
+    set.add(dynamicCurrentWeek);
+    const weeks = [...set].sort((a, b) => weekNum(a) - weekNum(b));
     return {
       weeks,
-      currentWeek: selectedWeek ?? latestWeek,
+      // Default to the real current week (shows "no data" if empty) rather than
+      // the latest week that happens to have data.
+      currentWeek: selectedWeek ?? dynamicCurrentWeek,
       selectedWeek,
       setSelectedWeek,
     };

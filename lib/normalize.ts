@@ -46,5 +46,7 @@ export function normalizePerson(d: any): Person {
     active: d.active !== false,
     joinedAt: d.joinedAt ?? "",
     avatarColor: d.avatarColor || colorFor(name),
+    employeeId: d.employeeId ?? undefined,
+    level: typeof d.level === "number" ? d.level : undefined,
   };
 }

@@ -26,6 +26,9 @@ export interface Person {
   active: boolean;
   joinedAt: string; // ISO date
   avatarColor: string;
+  employeeId?: string;
+  /** Org depth: 1 = Founder/CEO (top). Higher number = further down the org. */
+  level?: number;
 }
 
 // ── weekly_submissions ──────────────────────────────────────────────────────
