@@ -270,7 +270,8 @@ export default function PeoplePage() {
         ) : rows.length === 0 ? (
           <EmptyState icon={Users} title="No people found" description="Adjust filters or add a person." />
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink-100 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
@@ -324,10 +325,10 @@ export default function PeoplePage() {
                           </div>
                         </div>
                       </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 whitespace-nowrap">
                       {e.phone ? (
                         <span className="inline-flex items-center gap-1 text-xs text-ink-500">
-                          <Phone size={12} /> {e.phone}
+                          <Phone size={12} className="shrink-0" /> {e.phone}
                         </span>
                       ) : (
                         <span className="text-xs text-ink-300">—</span>
@@ -396,6 +397,100 @@ export default function PeoplePage() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile / tablet: stacked cards instead of a wide table */}
+          <ul className="divide-y divide-ink-100 lg:hidden">
+            {rows.map((e: any) => {
+              const level = e.level || 0;
+              const levelColors = [
+                "border-l-violet-500",
+                "border-l-blue-500",
+                "border-l-sky-500",
+                "border-l-teal-500",
+              ];
+              const border = e.isTopLevel
+                ? "border-l-violet-500"
+                : levelColors[Math.min(level, levelColors.length - 1)];
+              return (
+                <li key={e.key} className={cn("border-l-4 px-4 py-3.5", border)}>
+                  <div className="flex items-start gap-3">
+                    <Avatar name={e.name} color={e.avatarColor} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <p className="font-medium text-ink-800">{e.name}</p>
+                            {e.reports > 0 && (
+                              <span className="text-[10px] font-medium text-ink-500">
+                                ({e.reports} report{e.reports > 1 ? "s" : ""})
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-ink-400">
+                            {e.title || (e.isLead ? "Team lead" : "Team member")}
+                          </p>
+                        </div>
+                        {e.person && (
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
+                              <Pencil size={15} />
+                            </button>
+                            <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                        <div className="col-span-2 flex items-center gap-1 text-ink-600">
+                          {e.phone ? (
+                            <>
+                              <Phone size={12} className="shrink-0 text-ink-400" />
+                              <span className="truncate">{e.phone}</span>
+                            </>
+                          ) : (
+                            <span className="text-ink-300">No phone</span>
+                          )}
+                        </div>
+                        <div>
+                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Team lead</dt>
+                          <dd className="text-ink-600">
+                            {e.isTopLevel ? "—" : e.reportingTo || e.teamLead || "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Department</dt>
+                          <dd className="text-ink-600">{e.department || "—"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Last submission</dt>
+                          <dd className="text-ink-600">
+                            {e.c.lastSubmission ? formatDate(e.c.lastSubmission.submittedAt) : (e.isLead ? "—" : "Never")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Consistency</dt>
+                          <dd>
+                            {e.c.count > 0 ? (
+                              <span className={cn("font-semibold tabular-nums", e.c.rate >= 80 ? "text-emerald-600" : e.c.rate >= 50 ? "text-amber-600" : "text-rose-600")}>
+                                {e.c.rate}%
+                              </span>
+                            ) : e.isLead ? (
+                              <span className="text-violet-700">Team lead</span>
+                            ) : (
+                              <span className="text-ink-300">None</span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          </>
         )}
       </Card>
 
