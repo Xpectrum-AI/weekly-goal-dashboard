@@ -12,6 +12,7 @@ import {
   MessageCircle,
   X,
   ClipboardCheck,
+  NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const NAV = [
   { href: "/people", label: "People & Teams", icon: Users },
   { href: "/import", label: "Data Import", icon: Upload },
   { href: "/review", label: "Review Queue", icon: ClipboardCheck },
+  { href: "/notepad", label: "Notepad", icon: NotebookPen },
 ];
 
 export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {

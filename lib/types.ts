@@ -161,3 +161,15 @@ export interface SubmissionFilters {
   teamLead: string; // "all" or a lead name
   personId: string; // "all" or a person id
 }
+
+// ── Notepad notes (free-form team-lead notes) ───────────────────────────────
+export interface Note {
+  _id: string;
+  title: string;
+  content: string;
+  /** Owner persona id ("__org__" for the organization-wide / founder view). Each owner sees only their own notes. */
+  owner: string;
+  ownerName: string;
+  createdAt: string;
+  updatedAt: string;
+}

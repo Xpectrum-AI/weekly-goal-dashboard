@@ -1,6 +1,6 @@
 "use client";
 
-import type { Person, WeeklySubmission, WeeklyInsight, Upload, ExtractedSubmission } from "./types";
+import type { Person, WeeklySubmission, WeeklyInsight, Upload, ExtractedSubmission, Note } from "./types";
 
 async function req<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -55,4 +55,10 @@ export const api = {
   deleteExtractedSubmission: (id: string) => req<{ ok: boolean }>(`/api/extracted-submissions/${id}`, { method: "DELETE" }),
   approveExtractedSubmissions: (payload: { ids?: string[]; uploadId?: string }) => 
     req<{ approved: number; submissions: WeeklySubmission[] }>("/api/extracted-submissions/approve", { method: "POST", body: JSON.stringify(payload) }),
+
+  // notes (free-form notepad, scoped per persona/owner)
+  listNotes: (owner: string) => req<Note[]>(`/api/notes?owner=${encodeURIComponent(owner)}`),
+  createNote: (n: Pick<Note, "title" | "content" | "owner" | "ownerName">) => req<Note>("/api/notes", { method: "POST", body: JSON.stringify(n) }),
+  updateNote: (id: string, patch: Partial<Pick<Note, "title" | "content">>) => req<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteNote: (id: string) => req<{ ok: boolean }>(`/api/notes/${id}`, { method: "DELETE" }),
 };
