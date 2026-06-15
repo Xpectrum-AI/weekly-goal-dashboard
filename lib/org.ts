@@ -29,7 +29,11 @@ export const SUBMITTER_MAX_LEAD_LEVEL = 3;
 
 /** Whether we expect a weekly submission from this person (below level 3). */
 export function expectsSubmission(p: Person): boolean {
-  return typeof p.level === "number" && p.level > SUBMITTER_MAX_LEAD_LEVEL;
+  if (typeof p.level === "number") return p.level > SUBMITTER_MAX_LEAD_LEVEL;
+  // People added through the UI have no org level yet. Treat anyone who reports
+  // to a team lead (i.e. is not a top-level leader) as an expected submitter so
+  // they immediately appear on Missing Updates.
+  return !isTopLeader(p);
 }
 
 export function buildRoster(subs: WeeklySubmission[], people: Person[]): Submitter[] {
