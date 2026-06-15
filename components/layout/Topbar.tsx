@@ -65,18 +65,18 @@ function ScopeSwitcher({
   }, []);
 
   return (
-    <div ref={ref} className="relative hidden md:block">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-50"
+        className="flex items-center gap-2 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-sm font-medium text-ink-700 hover:bg-ink-50 sm:px-3"
       >
         <Eye size={14} className="text-ink-400" />
-        <span className="text-xs text-ink-400">Viewing as</span>
-        <span className="max-w-[160px] truncate">{viewer ? viewer.name : "Organization"}</span>
+        <span className="hidden text-xs text-ink-400 sm:inline">Viewing as</span>
+        <span className="max-w-[90px] truncate sm:max-w-[160px]">{viewer ? viewer.name : "Organization"}</span>
         <ChevronDown size={14} className="text-ink-400" />
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-pop animate-scale-in">
+        <div className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-ink-200 bg-white shadow-pop animate-scale-in">
           <div className="border-b border-ink-100 px-4 py-2.5">
             <p className="text-xs font-semibold text-ink-700">Scope the console to a leader</p>
             <p className="text-[11px] text-ink-400">Each leader sees only their reporting sub-tree</p>

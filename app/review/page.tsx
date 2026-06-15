@@ -817,7 +817,7 @@ function ValidationIssueRow({ issue }: { issue: ValidationIssue }) {
 
 function SideBySideView({ submission }: { submission: ExtractedSubmission }) {
   return (
-    <div className="grid h-[500px] grid-cols-2 divide-x divide-ink-200">
+    <div className="grid grid-cols-1 divide-y divide-ink-200 sm:h-[500px] sm:grid-cols-2 sm:divide-x sm:divide-y-0">
       {/* Left: Raw Excel Data */}
       <div className="flex flex-col">
         <div className="border-b border-ink-100 bg-ink-50 px-4 py-2">

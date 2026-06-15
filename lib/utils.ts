@@ -9,6 +9,40 @@ export function uid(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * Ensures a phone number carries the Indian +91 country code.
+ * - Empty input stays empty (so required-validation still fires).
+ * - Strips an existing 91 / 0091 / leading 0 before applying +91.
+ * - Preserves any separators the user typed after the country code.
+ */
+export function normalizePhone(raw: string): string {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return "";
+  // Keep digits to inspect the leading country code, but format off the original.
+  let rest = trimmed.replace(/^\+?91[\s-]?/, ""); // already has +91 / 91
+  rest = rest.replace(/^0091[\s-]?/, "");
+  rest = rest.replace(/^0/, ""); // domestic trunk prefix
+  rest = rest.trimStart();
+  if (!rest) return "";
+  // Keep only the 10-digit local subscriber number (drop stray separators/extras).
+  const digits = rest.replace(/\D/g, "").slice(0, 10);
+  if (!digits) return "";
+  return `+91 ${digits}`;
+}
+
+/** Number of local digits entered after the +91 country code. */
+export function phoneLocalDigits(raw: string): string {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return "";
+  let rest = trimmed.replace(/^\+?91[\s-]?/, "").replace(/^0091[\s-]?/, "").replace(/^0/, "");
+  return rest.replace(/\D/g, "");
+}
+
+/** A valid Indian mobile number has exactly 10 local digits after +91. */
+export function isValidPhone(raw: string): boolean {
+  return phoneLocalDigits(raw).length === 10;
+}
+
 // ── Display helpers ─────────────────────────────────────────────────────────
 export function initials(name: string): string {
   return name

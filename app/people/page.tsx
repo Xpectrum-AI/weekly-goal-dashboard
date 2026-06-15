@@ -14,7 +14,7 @@ import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
 import { consistencyByName, reportsCountByName, norm, isTopLeader } from "@/lib/org";
 import { exportPeopleCSV, exportPeopleFullCSV, type PeopleExportRow } from "@/lib/export";
-import { cn, formatDate, weekShort } from "@/lib/utils";
+import { cn, formatDate, weekShort, normalizePhone, isValidPhone } from "@/lib/utils";
 import type { Person } from "@/lib/types";
 
 export default function PeoplePage() {
@@ -153,8 +153,10 @@ export default function PeoplePage() {
   }
   function save() {
     if (!draft) return;
-    if (editing) updatePerson(editing._id, draft);
-    else addPerson(draft);
+    // Always store the phone with the +91 country code.
+    const cleaned = { ...draft, phone: normalizePhone(draft.phone) };
+    if (editing) updatePerson(editing._id, cleaned);
+    else addPerson(cleaned);
     setDraft(null);
     setEditing(null);
   }
@@ -408,7 +410,7 @@ export default function PeoplePage() {
         footer={
           <>
             <button className="btn-outline" onClick={() => setDraft(null)}>Cancel</button>
-            <button className="btn-primary" onClick={save} disabled={!draft?.name.trim() || !draft?.phone.trim()}>
+            <button className="btn-primary" onClick={save} disabled={!draft?.name.trim() || !isValidPhone(draft?.phone ?? "")}>
               {editing ? "Save changes" : "Add person"}
             </button>
           </>

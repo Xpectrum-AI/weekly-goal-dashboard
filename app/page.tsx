@@ -141,7 +141,7 @@ export default function OverviewPage() {
         title="Overview"
         description={`${weekLabel(currentWeek)} · ${label}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <select
                 value={currentWeek}

@@ -3,7 +3,7 @@
 import { useStore } from "@/lib/store";
 import { useFacets } from "@/lib/hooks";
 import { Field, TextInput, Select } from "@/components/ui/Form";
-import { cn } from "@/lib/utils";
+import { cn, phoneLocalDigits } from "@/lib/utils";
 import type { Person } from "@/lib/types";
 
 export type PersonDraft = Omit<Person, "_id">;
@@ -28,6 +28,14 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
   const { departments, teamLeads } = useFacets();
   const set = <K extends keyof PersonDraft>(k: K, v: PersonDraft[K]) => onChange({ ...value, [k]: v });
 
+  // The +91 country code is fixed; the user edits only the 10-digit local number.
+  const localDigits = phoneLocalDigits(value.phone);
+  const setLocal = (input: string) => {
+    const digits = input.replace(/\D/g, "").slice(0, 10);
+    set("phone", digits ? `+91 ${digits}` : "");
+  };
+  const phoneInvalid = localDigits.length > 0 && localDigits.length !== 10;
+
   // Leads available within the chosen department (falls back to all known leads).
   const deptLeads = Array.from(
     new Set(people.filter((p) => p.department === value.department).map((p) => p.teamLead))
@@ -40,8 +48,34 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
         <Field label="Full name" required>
           <TextInput value={value.name} onChange={(e) => set("name", e.target.value)} placeholder="Jordan Avery" />
         </Field>
-        <Field label="WhatsApp number" required>
-          <TextInput value={value.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+1-555-0123" />
+        <Field
+          label="WhatsApp number"
+          required
+          hint={phoneInvalid ? undefined : "10-digit Indian mobile number."}
+        >
+          <div
+            className={cn(
+              "flex items-stretch overflow-hidden rounded-lg border bg-white focus-within:ring-2",
+              phoneInvalid
+                ? "border-rose-300 focus-within:border-rose-400 focus-within:ring-rose-500/15"
+                : "border-ink-200 focus-within:border-emerald-400 focus-within:ring-emerald-500/15"
+            )}
+          >
+            <span className="flex select-none items-center border-r border-ink-200 bg-ink-50 px-3 text-sm font-medium text-ink-500">
+              +91
+            </span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={localDigits}
+              onChange={(e) => setLocal(e.target.value)}
+              placeholder="9876543210"
+              className="w-full border-0 bg-transparent px-3 py-2 text-sm text-ink-700 outline-none placeholder:text-ink-400"
+            />
+          </div>
+          {phoneInvalid && (
+            <p className="mt-1 text-xs text-rose-500">Enter exactly 10 digits ({localDigits.length}/10).</p>
+          )}
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
