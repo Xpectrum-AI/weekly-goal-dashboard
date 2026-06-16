@@ -173,7 +173,11 @@ export default function PeoplePage() {
     );
     if (expected && !submittedThisWeek && cleaned.phone) {
       setNudgeState("idle");
-      setNudgePerson({ name: cleaned.name, phone: cleaned.phone });
+      // Defer so the edit dialog finishes closing and the touch's synthesized
+      // "ghost click" doesn't land on this dialog's backdrop (mobile), which
+      // would dismiss it immediately.
+      const next = { name: cleaned.name, phone: cleaned.phone };
+      setTimeout(() => setNudgePerson(next), 350);
     }
   }
 
@@ -550,22 +554,17 @@ export default function PeoplePage() {
       <Modal
         open={!!nudgePerson}
         onClose={() => setNudgePerson(null)}
-        title="Send a reminder?"
+        title="Send a reminder"
         subtitle="This person hasn't submitted their update for this week yet."
         size="sm"
         footer={
           nudgeState === "sent" ? (
             <button className="btn-primary" onClick={() => setNudgePerson(null)}>Done</button>
           ) : (
-            <>
-              <button className="btn-outline" onClick={() => setNudgePerson(null)} disabled={nudgeState === "sending"}>
-                Not now
-              </button>
-              <button className="btn-primary flex items-center gap-2" onClick={handleSendNudge} disabled={nudgeState === "sending"}>
-                {nudgeState === "sending" ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                {nudgeState === "sending" ? "Sending…" : nudgeState === "error" ? "Retry" : "Send reminder"}
-              </button>
-            </>
+            <button className="btn-primary flex items-center gap-2" onClick={handleSendNudge} disabled={nudgeState === "sending"}>
+              {nudgeState === "sending" ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+              {nudgeState === "sending" ? "Sending…" : nudgeState === "error" ? "Retry" : "Submit"}
+            </button>
           )
         }
       >
@@ -579,11 +578,8 @@ export default function PeoplePage() {
             ) : (
               <>
                 <p className="text-sm text-ink-600">
-                  Send <span className="font-semibold text-ink-800">{nudgePerson.name}</span> the weekly
-                  alignment reminder on WhatsApp?
-                </p>
-                <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-400">
-                  <Phone size={12} /> {nudgePerson.phone}
+                  This will send <span className="font-semibold text-ink-800">{nudgePerson.name}</span> a
+                  weekly alignment reminder on WhatsApp.
                 </p>
                 {nudgeState === "error" && (
                   <p className="mt-3 flex items-center gap-1.5 text-xs text-rose-500">
