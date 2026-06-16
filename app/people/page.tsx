@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, Plus, Pencil, Trash2, Phone, Network, Download } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Phone, Network, Download, Send, Loader2, CheckCircle2, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Card } from "@/components/ui/Card";
@@ -12,14 +12,15 @@ import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { PersonForm, emptyPerson, type PersonDraft } from "@/components/forms/PersonForm";
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
-import { consistencyByName, reportsCountByName, norm, isTopLeader } from "@/lib/org";
+import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission } from "@/lib/org";
+import { sendNudge } from "@/lib/nudge";
 import { exportPeopleCSV, exportPeopleFullCSV, type PeopleExportRow } from "@/lib/export";
 import { cn, formatDate, weekShort, normalizePhone, isValidPhone } from "@/lib/utils";
 import type { Person } from "@/lib/types";
 
 export default function PeoplePage() {
   const hydrated = useLoaded();
-  const { weeks } = useWeeks();
+  const { weeks, currentWeek } = useWeeks();
   const { departments, teamLeads } = useFacets();
   const { people, submissions, roster, viewer, isOrgWide } = useScope();
   const addPerson = useStore((s) => s.addPerson);
@@ -32,6 +33,11 @@ export default function PeoplePage() {
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+
+  // Post-save reminder: when a saved person is still pending this week, offer to
+  // send them the WhatsApp alignment nudge.
+  const [nudgePerson, setNudgePerson] = useState<{ name: string; phone: string } | null>(null);
+  const [nudgeState, setNudgeState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   // Merge the org roster (people) with the actual submitters so consistency is
   // real for those who report, while managers who don't submit are flagged.
@@ -159,6 +165,24 @@ export default function PeoplePage() {
     else addPerson(cleaned);
     setDraft(null);
     setEditing(null);
+
+    // Is this person still pending their update for the current week?
+    const expected = expectsSubmission({ ...cleaned, level: editing?.level } as Person);
+    const submittedThisWeek = submissions.some(
+      (s) => norm(s.personName) === norm(cleaned.name) && s.week === currentWeek
+    );
+    if (expected && !submittedThisWeek && cleaned.phone) {
+      setNudgeState("idle");
+      setNudgePerson({ name: cleaned.name, phone: cleaned.phone });
+    }
+  }
+
+  async function handleSendNudge() {
+    if (!nudgePerson) return;
+    setNudgeState("sending");
+    const ok = await sendNudge(nudgePerson.name, nudgePerson.phone);
+    setNudgeState(ok ? "sent" : "error");
+    if (ok) setTimeout(() => setNudgePerson(null), 1200);
   }
 
   return (
@@ -522,6 +546,55 @@ export default function PeoplePage() {
         message="This person will be removed from the roster. Their past submissions remain."
         confirmLabel="Remove"
       />
+
+      <Modal
+        open={!!nudgePerson}
+        onClose={() => setNudgePerson(null)}
+        title="Send a reminder?"
+        subtitle="This person hasn't submitted their update for this week yet."
+        size="sm"
+        footer={
+          nudgeState === "sent" ? (
+            <button className="btn-primary" onClick={() => setNudgePerson(null)}>Done</button>
+          ) : (
+            <>
+              <button className="btn-outline" onClick={() => setNudgePerson(null)} disabled={nudgeState === "sending"}>
+                Not now
+              </button>
+              <button className="btn-primary flex items-center gap-2" onClick={handleSendNudge} disabled={nudgeState === "sending"}>
+                {nudgeState === "sending" ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                {nudgeState === "sending" ? "Sending…" : nudgeState === "error" ? "Retry" : "Send reminder"}
+              </button>
+            </>
+          )
+        }
+      >
+        {nudgePerson && (
+          <div className="px-5 py-4">
+            {nudgeState === "sent" ? (
+              <div className="flex items-center gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-emerald-700">
+                <CheckCircle2 size={20} className="shrink-0" />
+                <p className="text-sm font-medium">Reminder sent to {nudgePerson.name}.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-ink-600">
+                  Send <span className="font-semibold text-ink-800">{nudgePerson.name}</span> the weekly
+                  alignment reminder on WhatsApp?
+                </p>
+                <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-ink-400">
+                  <Phone size={12} /> {nudgePerson.phone}
+                </p>
+                {nudgeState === "error" && (
+                  <p className="mt-3 flex items-center gap-1.5 text-xs text-rose-500">
+                    <X size={13} /> Couldn't send the message. Please try again.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

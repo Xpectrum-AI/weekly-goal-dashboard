@@ -5,6 +5,7 @@
 
 import type { WeeklySubmission, ScoredSubmission, Person, ExtractedSubmission } from "./types";
 import type { Submitter } from "./org";
+import { priorityText, actionTexts } from "./goals";
 
 // ── CSV escaping utility ────────────────────────────────────────────────────
 function escapeCSV(value: string | number | undefined | null): string {
@@ -47,8 +48,8 @@ export function exportSubmissionsCSV(
     csvLine([
       s.personName,
       s.week,
-      s.topPriority,
-      arrayToString(s.actions),
+      priorityText(s),
+      arrayToString(actionTexts(s)),
       arrayToString(s.outcomes),
       arrayToString(s.blockers),
       s.notes || "",
@@ -88,8 +89,8 @@ export function exportSubmissionsFullCSV(
       s.department,
       s.teamLead,
       s.week,
-      s.topPriority,
-      arrayToString(s.actions),
+      priorityText(s),
+      arrayToString(actionTexts(s)),
       arrayToString(s.outcomes),
       arrayToString(s.blockers),
       s.notes || "",

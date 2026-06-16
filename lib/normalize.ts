@@ -17,6 +17,19 @@ export function colorFor(name: string): string {
 const strArray = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x) => x != null && String(x).trim()).map((x) => String(x)) : [];
 
+// Preserve the goal model: legacy strings stay strings, new {text, completed}
+// objects are kept intact (so completion state survives a read/normalize).
+const goalValue = (v: unknown): import("./types").GoalValue => {
+  if (v && typeof v === "object" && "text" in (v as any)) {
+    return { text: String((v as any).text ?? ""), completed: !!(v as any).completed };
+  }
+  return v == null ? "" : String(v);
+};
+const goalArray = (v: unknown): import("./types").GoalValue[] =>
+  Array.isArray(v)
+    ? v.map(goalValue).filter((g) => (typeof g === "string" ? g.trim() : g.text.trim()))
+    : [];
+
 export function normalizeSubmission(d: any): WeeklySubmission {
   return {
     _id: String(d._id),
@@ -26,8 +39,8 @@ export function normalizeSubmission(d: any): WeeklySubmission {
     teamLead: d.teamLead ?? "",
     week: d.week ?? "",
     submittedAt: d.submittedAt ?? "",
-    topPriority: d.topPriority ?? "",
-    actions: strArray(d.actions),
+    topPriority: Array.isArray(d.topPriority) ? goalArray(d.topPriority) : goalValue(d.topPriority),
+    actions: goalArray(d.actions),
     outcomes: strArray(d.outcomes),
     blockers: strArray(d.blockers),
     notes: d.notes ?? "",

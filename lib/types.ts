@@ -32,6 +32,19 @@ export interface Person {
 }
 
 // ── weekly_submissions ──────────────────────────────────────────────────────
+/** A goal-style item that can be marked complete. New model for priority/actions. */
+export interface GoalItem {
+  text: string;
+  completed: boolean;
+}
+
+/**
+ * A priority or action value. New records store a {text, completed} GoalItem;
+ * legacy records store a plain string. Read these through lib/goals helpers
+ * (goalText / goalDone) so both shapes are handled transparently.
+ */
+export type GoalValue = string | GoalItem;
+
 export interface WeeklySubmission {
   _id: string;
   personId: string | null; // ref → people._id (may be null if unmatched)
@@ -40,8 +53,10 @@ export interface WeeklySubmission {
   teamLead: string;
   week: string; // ISO week label e.g. "2026-W23"
   submittedAt: string; // ISO datetime
-  topPriority: string; // the person's #1 priority this week
-  actions: string[]; // what they did / action items
+  // The person's top priorities this week. Legacy records store a single string
+  // or GoalItem; new records may store an array of GoalItems (multiple priorities).
+  topPriority: GoalValue | GoalValue[];
+  actions: GoalValue[]; // what they did / action items (string[]=legacy, GoalItem[]=new)
   outcomes: string[]; // results delivered
   blockers: string[]; // raw blocker texts (may be empty)
   notes: string; // any extra context

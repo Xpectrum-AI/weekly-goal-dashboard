@@ -6,7 +6,8 @@ import { useStore } from "@/lib/store";
 import { useWeeks } from "@/lib/hooks";
 import { Field, TextInput, TextArea, Select } from "@/components/ui/Form";
 import { weekLabel, getCurrentWeek } from "@/lib/utils";
-import type { WeeklySubmission } from "@/lib/types";
+import { goalText, goalDone } from "@/lib/goals";
+import type { WeeklySubmission, GoalItem, GoalValue } from "@/lib/types";
 
 export type SubmissionDraft = Omit<WeeklySubmission, "_id">;
 
@@ -100,6 +101,13 @@ export function SubmissionForm({
   const { weeks } = useWeeks();
   const set = <K extends keyof SubmissionDraft>(k: K, v: SubmissionDraft[K]) => onChange({ ...value, [k]: v });
 
+  // Top priority may be a single value (legacy) or an array (new multi model).
+  const priorityList: GoalValue[] = Array.isArray(value.topPriority)
+    ? value.topPriority
+    : goalText(value.topPriority).trim()
+    ? [value.topPriority]
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
@@ -142,16 +150,27 @@ export function SubmissionForm({
         </Field>
       </div>
 
-      <Field label="Top priority this week">
-        <TextInput
-          value={value.topPriority}
-          onChange={(e) => set("topPriority", e.target.value)}
+      <Field label="Top priorities this week" hint="Press Enter to add each priority">
+        <ListInput
+          value={priorityList.map(goalText)}
+          onChange={(texts) => {
+            const next: GoalItem[] = texts.map((t, i) => ({ text: t, completed: goalDone(priorityList[i]) }));
+            set("topPriority", next);
+          }}
           placeholder="Ship the billing event schema"
         />
       </Field>
 
       <Field label="Actions / what they did" hint="Press Enter to add each item">
-        <ListInput value={value.actions} onChange={(v) => set("actions", v)} placeholder="Refactored the billing producer" />
+        <ListInput
+          value={(value.actions ?? []).map(goalText)}
+          onChange={(texts) => {
+            const prev = value.actions ?? [];
+            const next: GoalItem[] = texts.map((t, i) => ({ text: t, completed: goalDone(prev[i]) }));
+            set("actions", next);
+          }}
+          placeholder="Refactored the billing producer"
+        />
       </Field>
 
       <Field label="Outcomes / results" hint="Concrete results delivered">

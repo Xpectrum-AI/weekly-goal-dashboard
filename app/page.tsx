@@ -31,6 +31,7 @@ import {
 } from "@/lib/analytics";
 import { missingSubmitters } from "@/lib/org";
 import { weekLabel, weekShort } from "@/lib/utils";
+import { priorityText, actionTexts } from "@/lib/goals";
 
 export default function OverviewPage() {
   const hydrated = useLoaded();
@@ -299,7 +300,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+        <Card className="min-w-0 overflow-hidden lg:col-span-2">
           <CardHeader
             title="Recent submissions"
             subtitle="Latest weekly updates received"
@@ -322,13 +323,13 @@ export default function OverviewPage() {
                     >
                       <Avatar name={s.personName} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex min-w-0 items-center gap-2">
                           <p className="truncate text-sm font-medium text-ink-800">{s.personName}</p>
-                          <span className="text-[11px] text-ink-400">{s.department}</span>
+                          <span className="hidden shrink-0 text-[11px] text-ink-400 sm:inline">{s.department}</span>
                         </div>
-                        <p className="mt-0.5 truncate text-[11px] text-ink-400">{s.topPriority || s.actions[0] || "—"}</p>
+                        <p className="mt-0.5 truncate text-[11px] text-ink-400">{priorityText(s) || actionTexts(s)[0] || "—"}</p>
                       </div>
-                      <span className="hidden text-[11px] text-ink-400 sm:block">{weekShort(s.week)}</span>
+                      <span className="hidden shrink-0 text-[11px] text-ink-400 sm:block">{weekShort(s.week)}</span>
                       <StatusBadge status={s.status} />
                     </Link>
                   </li>
@@ -338,8 +339,8 @@ export default function OverviewPage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader title="Needs attention" subtitle={`${missing.length} missing · ${weakCount} weak`} />
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader title="Missing Updates" subtitle={`${missing.length} missing · ${weakCount} weak`} />
           <CardBody className="p-0">
             {missing.length === 0 && weakCount === 0 ? (
               <EmptyState icon={MessageCircle} title="All caught up" description="Everyone submitted a solid update." />
@@ -354,9 +355,9 @@ export default function OverviewPage() {
                       <Avatar name={p.name} color={p.person?.avatarColor} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-ink-700">{p.name}</p>
-                        <p className="text-[11px] text-ink-400">{p.department} · {p.teamLead || "—"}</p>
+                        <p className="truncate text-[11px] text-ink-400">{p.department} · {p.teamLead || "—"}</p>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                         <Clock size={11} /> Missing
                       </span>
                     </Link>
@@ -371,9 +372,9 @@ export default function OverviewPage() {
                       <Avatar name={s.personName} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm text-ink-700">{s.personName}</p>
-                        <p className="text-[11px] text-ink-400">{s.department} · {s.teamLead}</p>
+                        <p className="truncate text-[11px] text-ink-400">{s.department} · {s.teamLead}</p>
                       </div>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
                         weak
                       </span>
                     </Link>

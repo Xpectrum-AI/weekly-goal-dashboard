@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/submissions", label: "Weekly Submissions", icon: MessageSquareText },
+  { href: "/submissions", label: "Weekly Goals", icon: MessageSquareText },
   { href: "/blockers", label: "Blockers & Themes", icon: AlertOctagon },
   { href: "/missing", label: "Missing Updates", icon: UserX },
   { href: "/people", label: "People & Teams", icon: Users },

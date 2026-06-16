@@ -1,4 +1,5 @@
 import { cn, initials } from "@/lib/utils";
+import { colorFor } from "@/lib/normalize";
 
 export function Avatar({
   name,
@@ -17,7 +18,7 @@ export function Avatar({
         "inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ring-2 ring-white",
         dims
       )}
-      style={{ backgroundColor: color || "#6366f1" }}
+      style={{ backgroundColor: color || colorFor(name) }}
       title={name}
     >
       {initials(name)}

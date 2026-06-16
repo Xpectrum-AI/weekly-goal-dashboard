@@ -1,4 +1,5 @@
 import type { WeeklySubmission, SubmissionStatus } from "./types";
+import { priorityText, actionTexts } from "./goals";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Pure functions: derive completeness, status, and themes from stored fields
@@ -24,9 +25,9 @@ export interface SubmissionScore {
  */
 export function scoreSubmission(sub: WeeklySubmission): SubmissionScore {
   let c = 0;
-  if ((sub.topPriority ?? "").trim().length > 3) c += 30;
+  if (priorityText(sub).trim().length > 3) c += 30;
 
-  const acts = (sub.actions ?? []).filter((a) => (a ?? "").trim()).length;
+  const acts = actionTexts(sub).filter((a) => a.trim()).length;
   if (acts >= 2) c += 40;
   else if (acts === 1) c += 22;
 

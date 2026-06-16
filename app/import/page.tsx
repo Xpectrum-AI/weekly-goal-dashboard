@@ -43,6 +43,7 @@ import {
   type ExtractionResult,
 } from "@/lib/extract";
 import { cn, formatDateTime } from "@/lib/utils";
+import { priorityText } from "@/lib/goals";
 
 type Step = 1 | 2 | 3 | 4;
 const STEPS = ["Upload", "Map fields", "Preview", "Summary"];
@@ -678,7 +679,7 @@ function SubmissionPreview({ rows, mapping }: { rows: ValidatedSubmission[]; map
             <td className="px-5 py-2.5 text-ink-400">{v.index + 2}</td>
             <td className="px-3 py-2.5">{v.resolvedName ? <span className="font-medium text-ink-700">{v.resolvedName}</span> : <span className="text-rose-500">{String(v.raw[mapping.person] ?? "—")}</span>}</td>
             <td className="px-3 py-2.5 text-ink-500">{v.data?.week ?? "—"}</td>
-            <td className="max-w-[220px] truncate px-3 py-2.5 text-ink-600">{v.data?.topPriority || "—"}</td>
+            <td className="max-w-[220px] truncate px-3 py-2.5 text-ink-600">{(v.data ? priorityText(v.data) : "") || "—"}</td>
             <td className="px-5 py-2.5">
               {v.data ? <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600"><CheckCircle2 size={13} /> Ready</span> : <span className="inline-flex items-center gap-1 text-xs font-medium text-rose-600"><XCircle size={13} /> {v.errors.join(", ")}</span>}
             </td>

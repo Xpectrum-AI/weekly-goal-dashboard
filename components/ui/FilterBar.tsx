@@ -34,7 +34,7 @@ export function FilterBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-[200px] flex-1">
+      <div className="relative w-full min-w-[160px] sm:w-auto sm:flex-1">
         <Search
           size={15}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
@@ -52,7 +52,7 @@ export function FilterBar({
           value={values[f.key] ?? "all"}
           onChange={(e) => onChange(f.key, e.target.value)}
           className={cn(
-            "cursor-pointer rounded-lg border bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15",
+            "min-w-0 flex-1 cursor-pointer rounded-lg border bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15 sm:flex-none",
             values[f.key] && values[f.key] !== "all"
               ? "border-brand-300 text-brand-700"
               : "border-ink-200 text-ink-600"

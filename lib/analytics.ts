@@ -6,6 +6,7 @@ import type {
   WeeklyInsight,
 } from "./types";
 import { scoreSubmission } from "./scoring";
+import { actionTexts } from "./goals";
 import { weekNum } from "./utils";
 
 // ── Scoring ─────────────────────────────────────────────────────────────────
@@ -15,7 +16,7 @@ export function score(sub: WeeklySubmission): ScoredSubmission {
     ...sub,
     completeness,
     status,
-    actionCount: (sub.actions ?? []).filter((a) => (a ?? "").trim()).length,
+    actionCount: actionTexts(sub).filter((a) => a.trim()).length,
     outcomeCount: (sub.outcomes ?? []).filter((o) => (o ?? "").trim()).length,
     blockerCount: (sub.blockers ?? []).length,
   };
