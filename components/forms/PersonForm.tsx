@@ -79,7 +79,7 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Department">
+        <Field label="Department" required>
           <Select value={value.department} onChange={(e) => set("department", e.target.value)}>
             <option value="">— Select —</option>
             {departments.map((d) => (
@@ -87,7 +87,7 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
             ))}
           </Select>
         </Field>
-        <Field label="Team lead">
+        <Field label="Team lead" required>
           <Select value={value.teamLead ?? ""} onChange={(e) => set("teamLead", e.target.value)}>
             <option value="">— Select —</option>
             {leadOptions.map((l) => (

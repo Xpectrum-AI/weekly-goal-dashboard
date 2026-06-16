@@ -413,9 +413,11 @@ export default function PeoplePage() {
                           <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
                             <Pencil size={15} />
                           </button>
-                          <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                            <Trash2 size={15} />
-                          </button>
+                          {!e.isTopLevel && (
+                            <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -463,9 +465,11 @@ export default function PeoplePage() {
                             <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
                               <Pencil size={15} />
                             </button>
-                            <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                              <Trash2 size={15} />
-                            </button>
+                            {!e.isTopLevel && (
+                              <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
+                                <Trash2 size={15} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -533,7 +537,7 @@ export default function PeoplePage() {
         footer={
           <>
             <button className="btn-outline" onClick={() => setDraft(null)}>Cancel</button>
-            <button className="btn-primary" onClick={save} disabled={!draft?.name.trim() || !isValidPhone(draft?.phone ?? "")}>
+            <button className="btn-primary" onClick={save} disabled={!draft?.name.trim() || !isValidPhone(draft?.phone ?? "") || !draft?.department?.trim() || !draft?.teamLead?.trim()}>
               {editing ? "Save changes" : "Add person"}
             </button>
           </>
@@ -557,6 +561,8 @@ export default function PeoplePage() {
         title="Send a reminder"
         subtitle="This person hasn't submitted their update for this week yet."
         size="sm"
+        hideClose
+        dismissable={false}
         footer={
           nudgeState === "sent" ? (
             <button className="btn-primary" onClick={() => setNudgePerson(null)}>Done</button>

@@ -13,6 +13,8 @@ export function Modal({
   children,
   footer,
   size = "md",
+  hideClose = false,
+  dismissable = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -21,10 +23,12 @@ export function Modal({
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  hideClose?: boolean;
+  dismissable?: boolean;
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && dismissable) onClose();
     }
     if (open) {
       document.addEventListener("keydown", onKey);
@@ -34,7 +38,7 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [open, onClose, dismissable]);
 
   if (!open) return null;
   if (typeof document === "undefined") return null;
@@ -50,7 +54,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
       <div
         className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
+        onClick={dismissable ? onClose : undefined}
       />
       <div
         className={cn(
@@ -63,13 +67,15 @@ export function Modal({
             <h2 className="text-base font-semibold text-ink-900">{title}</h2>
             {subtitle && <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          {!hideClose && (
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-ink-400 transition hover:bg-ink-100 hover:text-ink-700"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
         {footer && (
