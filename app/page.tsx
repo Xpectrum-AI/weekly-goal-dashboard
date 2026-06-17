@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   MessageCircle,
@@ -10,6 +10,8 @@ import {
   Flag,
   ArrowRight,
   Clock,
+  CalendarClock,
+  AlertTriangle,
   Sparkles,
   Loader2,
   ChevronDown,
@@ -30,12 +32,12 @@ import {
   weakSubmissions,
 } from "@/lib/analytics";
 import { missingSubmitters } from "@/lib/org";
-import { weekLabel, weekShort } from "@/lib/utils";
+import { weekLabel, weekShort, formatDate, cn } from "@/lib/utils";
 import { priorityText, actionTexts } from "@/lib/goals";
 
 export default function OverviewPage() {
   const hydrated = useLoaded();
-  const { submissions, roster, label, isOrgWide } = useScope();
+  const { submissions, roster, label, isOrgWide, assignedTasks } = useScope();
   const { weeks, currentWeek, setSelectedWeek } = useWeeks();
   const storedInsight = useInsightForWeek(currentWeek);
   const allInsights = useInsightsForWeeks(weeks);
@@ -127,6 +129,21 @@ export default function OverviewPage() {
   
   const recent = recentSubmissions(submissions, 7);
   const missing = missingSubmitters(roster, submissions, currentWeek);
+
+  // Open assigned tasks, surfaced urgent-first then by soonest deadline.
+  const openTasks = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return assignedTasks
+      .filter((t) => !t.completed)
+      .map((t) => ({ ...t, overdue: !!t.deadline && t.deadline < today }))
+      .sort((a, b) => {
+        const ua = a.urgency === "urgent" ? 0 : 1;
+        const ub = b.urgency === "urgent" ? 0 : 1;
+        if (ua !== ub) return ua - ub;
+        return (a.deadline || "9999-99-99").localeCompare(b.deadline || "9999-99-99");
+      });
+  }, [assignedTasks]);
+  const urgentCount = openTasks.filter((t) => t.urgency === "urgent" || t.overdue).length;
   
   // Build trend using only stored insights from MongoDB
   const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
@@ -300,7 +317,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 overflow-hidden lg:col-span-2">
+        <Card className="min-w-0 overflow-hidden">
           <CardHeader
             title="Recent submissions"
             subtitle="Latest weekly updates received"
@@ -376,6 +393,53 @@ export default function OverviewPage() {
                       </div>
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
                         weak
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Assigned tasks — urgent & deadlines */}
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader
+            title="Assigned tasks"
+            subtitle={`${openTasks.length} open${urgentCount ? ` · ${urgentCount} urgent / overdue` : ""}`}
+            action={
+              <Link href="/submissions" className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700">
+                View all <ArrowRight size={13} />
+              </Link>
+            }
+          />
+          <CardBody className="p-0">
+            {openTasks.length === 0 ? (
+              <EmptyState icon={Flag} title="No open assigned tasks" description="Leadership-assigned tasks with deadlines show up here." />
+            ) : (
+              <ul className="divide-y divide-ink-100">
+                {openTasks.slice(0, 8).map((t) => (
+                  <li key={t._id}>
+                    <Link
+                      href={`/submissions?person=${encodeURIComponent(t.personName)}&week=${t.week}`}
+                      className="flex items-center gap-3 px-5 py-3 transition hover:bg-ink-50/60"
+                    >
+                      <Avatar name={t.personName} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate text-sm font-medium text-ink-800">{t.personName}</p>
+                          {t.urgency === "urgent" && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-rose-700">
+                              <AlertTriangle size={9} /> Urgent
+                            </span>
+                          )}
+                          <span className="hidden text-[11px] text-ink-400 sm:inline">{weekShort(t.week)}</span>
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] text-ink-400">{t.text}</p>
+                      </div>
+                      <span className={cn("inline-flex shrink-0 items-center gap-1 text-[11px]", t.overdue ? "font-semibold text-rose-600" : "text-ink-400")}>
+                        <CalendarClock size={12} />
+                        {t.deadline ? (t.overdue ? "Overdue" : formatDate(t.deadline)) : "No date"}
                       </span>
                     </Link>
                   </li>

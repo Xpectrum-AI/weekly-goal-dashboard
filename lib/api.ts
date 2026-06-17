@@ -1,6 +1,6 @@
 "use client";
 
-import type { Person, WeeklySubmission, WeeklyInsight, Upload, ExtractedSubmission, Note } from "./types";
+import type { Person, WeeklySubmission, WeeklyInsight, Upload, ExtractedSubmission, Note, AssignedTask } from "./types";
 
 async function req<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -33,6 +33,12 @@ export const api = {
   bulkSubmissions: (rows: Omit<WeeklySubmission, "_id">[]) => req<WeeklySubmission[]>("/api/submissions", { method: "POST", body: JSON.stringify(rows) }),
   updateSubmission: (id: string, patch: Partial<WeeklySubmission>) => req<WeeklySubmission>(`/api/submissions/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteSubmission: (id: string) => req<{ ok: boolean }>(`/api/submissions/${id}`, { method: "DELETE" }),
+
+  // assigned tasks (leadership-assigned, separate collection)
+  listAssignedTasks: () => req<AssignedTask[]>("/api/assigned-tasks"),
+  createAssignedTask: (t: Omit<AssignedTask, "_id" | "createdAt">) => req<AssignedTask>("/api/assigned-tasks", { method: "POST", body: JSON.stringify(t) }),
+  updateAssignedTask: (id: string, patch: Partial<AssignedTask>) => req<AssignedTask>(`/api/assigned-tasks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteAssignedTask: (id: string) => req<{ ok: boolean }>(`/api/assigned-tasks/${id}`, { method: "DELETE" }),
 
   // insights (read-only, normalized server-side)
   listInsights: () => req<WeeklyInsight[]>("/api/insights"),

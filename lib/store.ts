@@ -1,9 +1,16 @@
 "use client";
 
 import { create } from "zustand";
-import type { Person, WeeklySubmission, WeeklyInsight, ImportBatch } from "./types";
+import type { Person, WeeklySubmission, WeeklyInsight, ImportBatch, AssignedTask } from "./types";
 import { api } from "./api";
 import { uid } from "./utils";
+import { isTopLeader, leaders } from "./org";
+
+/** The default persona when none is selected: the top leader (CEO). */
+function defaultViewerId(people: Person[]): string | null {
+  const top = people.find((p) => !p.teamLead) ?? people.find(isTopLeader) ?? leaders(people)[0];
+  return top?._id ?? null;
+}
 
 export interface Toast {
   id: string;
@@ -15,6 +22,7 @@ interface StoreState {
   people: Person[];
   submissions: WeeklySubmission[];
   insights: WeeklyInsight[];
+  assignedTasks: AssignedTask[];
   importBatches: ImportBatch[]; // import history (client-side only)
 
   loaded: boolean;
@@ -48,6 +56,11 @@ interface StoreState {
   deletePerson: (id: string) => Promise<void>;
   bulkAddPeople: (rows: Omit<Person, "_id">[]) => Promise<void>;
 
+  // assigned tasks
+  addAssignedTask: (t: Omit<AssignedTask, "_id" | "createdAt">) => Promise<void>;
+  updateAssignedTask: (id: string, patch: Partial<AssignedTask>) => Promise<void>;
+  deleteAssignedTask: (id: string) => Promise<void>;
+
   recordImportBatch: (b: Omit<ImportBatch, "_id">) => void;
 }
 
@@ -55,6 +68,7 @@ export const useStore = create<StoreState>((set, get) => ({
   people: [],
   submissions: [],
   insights: [],
+  assignedTasks: [],
   importBatches: [],
   loaded: false,
   loading: false,
@@ -77,12 +91,15 @@ export const useStore = create<StoreState>((set, get) => ({
     if (get().loaded || get().loading) return;
     set({ loading: true, error: null });
     try {
-      const [people, submissions, insights] = await Promise.all([
+      const [people, submissions, insights, assignedTasks] = await Promise.all([
         api.listPeople(),
         api.listSubmissions(),
         api.listInsights(),
+        api.listAssignedTasks().catch(() => [] as AssignedTask[]),
       ]);
-      set({ people, submissions, insights, loaded: true, loading: false });
+      // Default to the top leader (CEO) — there is no organization-wide view.
+      const viewerId = get().viewerId ?? defaultViewerId(people);
+      set({ people, submissions, insights, assignedTasks, viewerId, loaded: true, loading: false });
     } catch (e) {
       set({ loading: false, error: String(e) });
       get().pushToast("Could not reach MongoDB — check the connection / IP allowlist", "error");
@@ -168,6 +185,40 @@ export const useStore = create<StoreState>((set, get) => ({
       set((st) => ({ people: [...docs, ...st.people] }));
     } catch {
       get().pushToast("Bulk import failed", "error");
+    }
+  },
+
+  // ── assigned tasks ────────────────────────────────────────────────────────
+  addAssignedTask: async (t) => {
+    try {
+      const doc = await api.createAssignedTask(t);
+      set((st) => ({ assignedTasks: [doc, ...st.assignedTasks] }));
+      get().pushToast("Task assigned");
+    } catch {
+      get().pushToast("Could not assign task", "error");
+    }
+  },
+  updateAssignedTask: async (id, patch) => {
+    const prev = get().assignedTasks;
+    // optimistic
+    set((st) => ({ assignedTasks: st.assignedTasks.map((x) => (x._id === id ? { ...x, ...patch } : x)) }));
+    try {
+      const doc = await api.updateAssignedTask(id, patch);
+      if (doc) set((st) => ({ assignedTasks: st.assignedTasks.map((x) => (x._id === id ? doc : x)) }));
+    } catch {
+      set({ assignedTasks: prev });
+      get().pushToast("Update failed", "error");
+    }
+  },
+  deleteAssignedTask: async (id) => {
+    const prev = get().assignedTasks;
+    set((st) => ({ assignedTasks: st.assignedTasks.filter((x) => x._id !== id) }));
+    try {
+      await api.deleteAssignedTask(id);
+      get().pushToast("Task removed", "info");
+    } catch {
+      set({ assignedTasks: prev });
+      get().pushToast("Delete failed", "error");
     }
   },
 

@@ -8,11 +8,12 @@ import {
   scopeSubmissions,
   scopePeople,
   scopeRoster,
+  scopeByPerson,
   leaders,
   isTopLeader,
   type Submitter,
 } from "./org";
-import type { Person, WeeklySubmission } from "./types";
+import type { Person, WeeklySubmission, AssignedTask } from "./types";
 import type { ThemeIndex } from "./analytics";
 
 /**
@@ -63,6 +64,7 @@ export interface Scope {
   viewer: Person | null;
   people: Person[];
   submissions: WeeklySubmission[];
+  assignedTasks: AssignedTask[];
   roster: Submitter[];
   leaders: Person[];
   label: string;
@@ -73,6 +75,7 @@ export interface Scope {
 export function useScope(): Scope {
   const allPeople = useStore((s) => s.people);
   const allSubs = useStore((s) => s.submissions);
+  const allTasks = useStore((s) => s.assignedTasks);
   const viewerId = useStore((s) => s.viewerId);
   return useMemo(() => {
     const viewer = viewerId ? allPeople.find((p) => p._id === viewerId) ?? null : null;
@@ -80,12 +83,13 @@ export function useScope(): Scope {
       viewer,
       people: scopePeople(allPeople, viewer),
       submissions: scopeSubmissions(allSubs, viewer, allPeople),
+      assignedTasks: scopeByPerson(allTasks, viewer, allPeople),
       roster: scopeRoster(buildRoster(allSubs, allPeople), viewer, allPeople),
       leaders: leaders(allPeople),
       label: viewer ? `${viewer.name} · ${viewer.title}` : "Organization-wide",
       isOrgWide: !viewer || isTopLeader(viewer),
     };
-  }, [allPeople, allSubs, viewerId]);
+  }, [allPeople, allSubs, allTasks, viewerId]);
 }
 
 /** Combined per-submission AI theme maps across all weekly_insights docs. */

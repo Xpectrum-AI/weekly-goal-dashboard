@@ -62,6 +62,28 @@ export interface WeeklySubmission {
   notes: string; // any extra context
 }
 
+// ── assigned_tasks (leadership-assigned priority tasks) ─────────────────────
+// A task a leader assigns to someone below their level. Stored separately from
+// weekly_submissions but shown alongside them in the Weekly Goals UI.
+export type TaskUrgency = "urgent" | "normal";
+
+export interface AssignedTask {
+  _id: string;
+  personId: string | null; // assignee ref → people._id
+  personName: string; // assignee (denormalized)
+  department: string;
+  teamLead: string;
+  week: string; // ISO week the task belongs to
+  text: string; // the task / priority text
+  urgency: TaskUrgency;
+  deadline: string; // ISO date (yyyy-mm-dd) or "" if none
+  completed: boolean;
+  assignedBy: string; // leader name who assigned it
+  assignedByLevel: number; // assigner's org level at time of assignment
+  notes: string;
+  createdAt: string; // ISO datetime
+}
+
 /** A submission enriched with its derived completeness + status. */
 export interface ScoredSubmission extends WeeklySubmission {
   completeness: number; // 0–100

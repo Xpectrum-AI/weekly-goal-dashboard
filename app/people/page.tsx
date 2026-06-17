@@ -12,7 +12,7 @@ import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { PersonForm, emptyPerson, type PersonDraft } from "@/components/forms/PersonForm";
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
-import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission } from "@/lib/org";
+import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission, computeLevel } from "@/lib/org";
 import { sendNudge } from "@/lib/nudge";
 import { exportPeopleCSV, exportPeopleFullCSV, type PeopleExportRow } from "@/lib/export";
 import { cn, formatDate, weekShort, normalizePhone, isValidPhone } from "@/lib/utils";
@@ -159,15 +159,17 @@ export default function PeoplePage() {
   }
   function save() {
     if (!draft) return;
-    // Always store the phone with the +91 country code.
-    const cleaned = { ...draft, phone: normalizePhone(draft.phone) };
+    // Always store the phone with the +91 country code, and auto-detect the org
+    // level from the chosen team lead (level 1 = top, each step down adds one).
+    const level = computeLevel(draft.teamLead ?? null, people);
+    const cleaned = { ...draft, phone: normalizePhone(draft.phone), level };
     if (editing) updatePerson(editing._id, cleaned);
     else addPerson(cleaned);
     setDraft(null);
     setEditing(null);
 
     // Is this person still pending their update for the current week?
-    const expected = expectsSubmission({ ...cleaned, level: editing?.level } as Person);
+    const expected = expectsSubmission({ ...cleaned, level } as Person);
     const submittedThisWeek = submissions.some(
       (s) => norm(s.personName) === norm(cleaned.name) && s.week === currentWeek
     );

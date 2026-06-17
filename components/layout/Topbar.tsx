@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Menu, Search, Bell, ChevronDown, Check, Eye, Building2 } from "lucide-react";
+import { Menu, Search, Bell, ChevronDown, Check, Eye } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useStore } from "@/lib/store";
 import { useScope } from "@/lib/hooks";
@@ -72,7 +72,7 @@ function ScopeSwitcher({
       >
         <Eye size={14} className="text-ink-400" />
         <span className="hidden text-xs text-ink-400 sm:inline">Viewing as</span>
-        <span className="max-w-[90px] truncate sm:max-w-[160px]">{viewer ? viewer.name : "Organization"}</span>
+        <span className="max-w-[90px] truncate sm:max-w-[160px]">{viewer ? viewer.name : "Select leader"}</span>
         <ChevronDown size={14} className="text-ink-400" />
       </button>
       {open && (
@@ -82,22 +82,6 @@ function ScopeSwitcher({
             <p className="text-[11px] text-ink-400">Each leader sees only their reporting sub-tree</p>
           </div>
           <div className="max-h-80 overflow-y-auto py-1">
-            <button
-              onClick={() => {
-                onPick(null);
-                setOpen(false);
-              }}
-              className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-ink-50"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <Building2 size={15} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-ink-700">Organization-wide</p>
-                <p className="text-[11px] text-ink-400">Founder view · everyone</p>
-              </div>
-              {!viewer && <Check size={14} className="text-emerald-600" />}
-            </button>
             {leaders.map((l) => (
               <button
                 key={l._id}

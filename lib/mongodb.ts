@@ -59,4 +59,5 @@ export const COLLECTIONS = {
   uploads: "uploads",
   extractedSubmissions: "extracted_submissions",
   notes: "notes",
+  assignedTasks: "assigned_tasks",
 } as const;

@@ -8,6 +8,51 @@ const WHATSAPP_PHONE_ID = "1139797872553332";
 const WHATSAPP_TOKEN =
   "EAA66pZAqI130BRgV7FrZBIGpjpx3ScLZCdouf4u783MQ8Kkgr4AEOIaXaJHHZCwAhFhteVLnL3OwYITvv5kqZCYzgd6n840Jh08kERjvNXQuU1nq63oVeHxRdDINZBuUZCckpmjwGUByZB4HZBmzkY7Rjye8UFjgqElTC4LGij9ojhe6ac0WRKWjdqNaZCZCPL2w5MekvrBj7WzUjyGgdRrtJLFqZCKZBQ7RdDepPR4bj";
 
+/**
+ * Notify a person on WhatsApp that a priority task was assigned to them.
+ * Uses the "priority_assigned" template: name (assignee), name2 (assigner),
+ * priority (the task text).
+ */
+export async function sendTaskAssigned(opts: {
+  phone: string;
+  assigneeName: string;
+  assignerName: string;
+  priority: string;
+}): Promise<boolean> {
+  try {
+    const res = await fetch(`https://graph.facebook.com/v23.0/${WHATSAPP_PHONE_ID}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: opts.phone.replace(/[^0-9+]/g, ""),
+        type: "template",
+        template: {
+          name: "priority_assigned",
+          language: { code: "en" },
+          components: [
+            {
+              type: "body",
+              parameters: [
+                { type: "text", parameter_name: "name", text: opts.assigneeName },
+                { type: "text", parameter_name: "name2", text: opts.assignerName },
+                { type: "text", parameter_name: "priority", text: opts.priority },
+              ],
+            },
+          ],
+        },
+      }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error("Failed to send task-assigned message:", e);
+    return false;
+  }
+}
+
 /** Send the weekly-alignment WhatsApp template to one person. Returns true on success. */
 export async function sendNudge(name: string, phone: string): Promise<boolean> {
   try {

@@ -1,4 +1,4 @@
-import type { Person, WeeklySubmission } from "./types";
+import type { Person, WeeklySubmission, AssignedTask } from "./types";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Normalizes raw Mongo documents into clean, fully-populated shapes so the rest
@@ -61,5 +61,24 @@ export function normalizePerson(d: any): Person {
     avatarColor: d.avatarColor || colorFor(name),
     employeeId: d.employeeId ?? undefined,
     level: typeof d.level === "number" ? d.level : undefined,
+  };
+}
+
+export function normalizeAssignedTask(d: any): AssignedTask {
+  return {
+    _id: String(d._id),
+    personId: d.personId ?? null,
+    personName: d.personName ?? "",
+    department: d.department ?? "Unassigned",
+    teamLead: d.teamLead ?? "",
+    week: d.week ?? "",
+    text: d.text ?? "",
+    urgency: d.urgency === "urgent" ? "urgent" : "normal",
+    deadline: d.deadline ?? "",
+    completed: d.completed === true,
+    assignedBy: d.assignedBy ?? "",
+    assignedByLevel: typeof d.assignedByLevel === "number" ? d.assignedByLevel : 1,
+    notes: d.notes ?? "",
+    createdAt: d.createdAt ?? "",
   };
 }

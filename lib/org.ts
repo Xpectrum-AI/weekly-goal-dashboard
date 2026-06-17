@@ -80,6 +80,22 @@ export function isTopLeader(p: Person): boolean {
   return !p.teamLead || norm(p.department) === "leadership";
 }
 
+/**
+ * Auto-detect a person's org level from their team lead. Level 1 = top (CEO,
+ * no team lead); each step down the reporting chain adds 1. So someone reporting
+ * directly to the CEO is level 2, their reports are level 3, etc.
+ */
+export function computeLevel(teamLead: string | null | undefined, people: Person[], _depth = 0): number {
+  if (!teamLead || !teamLead.trim()) return 1; // top of the org
+  if (_depth > 20) return _depth + 1; // cycle guard
+  const byName = new Map(people.map((p) => [norm(p.name), p]));
+  const firstLead = teamLead.split("/")[0].trim();
+  const lead = byName.get(norm(firstLead));
+  if (!lead) return 2; // lead not in roster yet — assume one below the top
+  if (typeof lead.level === "number") return lead.level + 1;
+  return computeLevel(lead.teamLead ?? null, people, _depth + 1) + 1;
+}
+
 /** Normalized names of a viewer's whole sub-tree (viewer + all descendants). */
 export function descendantNames(people: Person[], viewerName: string): Set<string> {
   const children = new Map<string, Person[]>();
@@ -137,6 +153,22 @@ export function scopeSubmissions(
   return subs.filter(
     (s) => names.has(norm(s.personName)) || teamLeadInScope(s.teamLead, names)
   );
+}
+
+/** A person's level, using the stored value or auto-detecting from team lead. */
+export function effectiveLevel(p: Person, people: Person[]): number {
+  return typeof p.level === "number" ? p.level : computeLevel(p.teamLead ?? null, people);
+}
+
+/** Scope any rows carrying personName/teamLead to the viewer's sub-tree. */
+export function scopeByPerson<T extends { personName: string; teamLead: string }>(
+  rows: T[],
+  viewer: Person | null,
+  people: Person[]
+): T[] {
+  if (!viewer || isTopLeader(viewer)) return rows;
+  const names = descendantNames(people, viewer.name);
+  return rows.filter((r) => names.has(norm(r.personName)) || teamLeadInScope(r.teamLead, names));
 }
 
 export function scopePeople(people: Person[], viewer: Person | null): Person[] {
