@@ -159,87 +159,94 @@ export default function OverviewPage() {
         title="Overview"
         description={`${weekLabel(currentWeek)} · ${label}`}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <select
-                value={currentWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="appearance-none rounded-lg border border-ink-200 bg-white px-3 py-2 pr-8 text-sm font-medium text-ink-700 shadow-sm hover:border-ink-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-              >
-                {weeks.map((w) => (
-                  <option key={w} value={w}>
-                    {weekLabel(w)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400"
-              />
-            </div>
-            <div className="relative group">
-              <button
-                onClick={handleSync}
-                disabled={syncing}
-                className={`btn-outline flex items-center gap-2 ${
-                  syncStatus === "success"
-                    ? "!bg-emerald-100 !text-emerald-700 !border-emerald-300"
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex gap-2">
+              <div className="relative flex-1 sm:flex-none">
+                <select
+                  value={currentWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="w-full appearance-none rounded-lg border border-ink-200 bg-white px-3 py-2 pr-8 text-sm font-medium text-ink-700 shadow-sm hover:border-ink-300 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  {weeks.map((w) => (
+                    <option key={w} value={w}>
+                      {weekLabel(w)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400"
+                />
+              </div>
+              <div className="group relative flex-1 sm:flex-none">
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className={`btn-outline w-full justify-center sm:w-auto ${
+                    syncStatus === "success"
+                      ? "!bg-emerald-100 !text-emerald-700 !border-emerald-300"
+                      : syncStatus === "error"
+                      ? "!bg-rose-100 !text-rose-700 !border-rose-300"
+                      : ""
+                  }`}
+                >
+                  {syncing ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  {syncing
+                    ? "Syncing..."
+                    : syncStatus === "success"
+                    ? "Synced!"
                     : syncStatus === "error"
-                    ? "!bg-rose-100 !text-rose-700 !border-rose-300"
+                    ? "Failed"
+                    : "Sync"}
+                  <Info size={14} className="text-ink-400" />
+                </button>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-ink-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
+                  Transform raw submissions to structured data
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink-800" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleGenerateInsights}
+                disabled={generatingInsights}
+                className={`btn-primary flex-1 justify-center sm:flex-none ${
+                  insightStatus === "success"
+                    ? "!bg-emerald-600"
+                    : insightStatus === "error"
+                    ? "!bg-rose-600"
                     : ""
                 }`}
               >
-                {syncing ? (
+                {generatingInsights ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <RefreshCw size={16} />
+                  <Sparkles size={16} />
                 )}
-                {syncing
-                  ? "Syncing..."
-                  : syncStatus === "success"
-                  ? "Synced!"
-                  : syncStatus === "error"
-                  ? "Failed"
-                  : "Sync"}
-                <Info size={14} className="text-ink-400" />
-              </button>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-ink-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
-                Transform raw submissions to structured data
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-ink-800" />
-              </div>
-            </div>
-            <button
-              onClick={handleGenerateInsights}
-              disabled={generatingInsights}
-              className={`btn-primary flex items-center gap-2 ${
-                insightStatus === "success"
-                  ? "!bg-emerald-600"
+                {generatingInsights
+                  ? `Generating ${weekLabel(currentWeek)}...`
+                  : insightStatus === "success"
+                  ? "Insights Sent!"
                   : insightStatus === "error"
-                  ? "!bg-rose-600"
-                  : ""
-              }`}
-            >
-              {generatingInsights ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Sparkles size={16} />
-              )}
-              {generatingInsights
-                ? `Generating ${weekLabel(currentWeek)}...`
-                : insightStatus === "success"
-                ? "Insights Sent!"
-                : insightStatus === "error"
-                ? "Failed"
-                : `Generate Insights (${weekLabel(currentWeek)})`}
-            </button>
-            <Link href="/submissions" className="btn-primary">
-              <MessageCircle size={16} /> View submissions
-            </Link>
+                  ? "Failed"
+                  : `Generate Insights (${weekLabel(currentWeek)})`}
+              </button>
+              <Link
+                href="/submissions"
+                className="btn-primary flex-1 justify-center sm:flex-none"
+              >
+                <MessageCircle size={16} /> View submissions
+              </Link>
+            </div>
           </div>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {!hydrated ? (
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[132px]" />)
         ) : (

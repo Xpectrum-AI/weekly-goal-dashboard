@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Toasts } from "@/components/ui/Toasts";
+import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { useStore } from "@/lib/store";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto max-w-[1400px] px-4 py-6 lg:px-8 lg:py-8">{children}</main>
       </div>
       <Toasts />
+      <ScrollToTop />
     </div>
   );
 }

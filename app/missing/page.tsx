@@ -146,7 +146,7 @@ function MissingPageContent() {
               <p className="text-xs text-ink-400">{c.received} of {c.expected} submitted</p>
             </CardBody>
           </Card>
-          <div className="grid grid-cols-1 gap-4 xs:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <KpiCard label="Expected" value={c.expected} icon={CheckCircle2} tone="sky" />
             <KpiCard label="Missing" value={c.missing} icon={UserX} tone="rose" />
           </div>

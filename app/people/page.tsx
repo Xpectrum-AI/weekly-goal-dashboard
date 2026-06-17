@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, Plus, Pencil, Trash2, Phone, Network, Download, Send, Loader2, CheckCircle2, X } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Phone, Network, Send, Loader2, CheckCircle2, X } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { Card } from "@/components/ui/Card";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Modal, ConfirmDialog } from "@/components/ui/Modal";
@@ -32,7 +33,6 @@ export default function PeoplePage() {
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Post-save reminder: when a saved person is still pending this week, offer to
   // send them the WhatsApp alignment nudge.
@@ -214,55 +214,35 @@ export default function PeoplePage() {
         }
         actions={
           <>
-            <div className="relative">
-              <button className="btn-outline" onClick={() => setShowExportMenu(!showExportMenu)}>
-                <Download size={16} /> Export
-              </button>
-              {showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
-                      onClick={() => {
-                        const toExport = people.filter((p) => rows.some((r: any) => r.key === norm(p.name)));
-                        exportPeopleCSV(toExport, "people");
-                        setShowExportMenu(false);
-                      }}
-                    >
-                      <Download size={14} />
-                      <div>
-                        <p className="font-medium">Template format</p>
-                        <p className="text-[11px] text-ink-400">Compatible with import</p>
-                      </div>
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
-                      onClick={() => {
-                        const exportRows: PeopleExportRow[] = rows.map((r: any) => ({
-                          name: r.name,
-                          phone: r.phone || "",
-                          department: r.department,
-                          teamLead: r.teamLead || "",
-                          title: r.title || "",
-                          active: r.person?.active,
-                          consistencyRate: r.c?.rate,
-                          submissionCount: r.c?.count,
-                        }));
-                        exportPeopleFullCSV(exportRows, "people_full");
-                        setShowExportMenu(false);
-                      }}
-                    >
-                      <Download size={14} />
-                      <div>
-                        <p className="font-medium">Full export</p>
-                        <p className="text-[11px] text-ink-400">Includes consistency data</p>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <ExportMenu
+              options={[
+                {
+                  label: "Template format",
+                  hint: "Compatible with import",
+                  onSelect: () => {
+                    const toExport = people.filter((p) => rows.some((r: any) => r.key === norm(p.name)));
+                    exportPeopleCSV(toExport, "people");
+                  },
+                },
+                {
+                  label: "Full export",
+                  hint: "Includes consistency data",
+                  onSelect: () => {
+                    const exportRows: PeopleExportRow[] = rows.map((r: any) => ({
+                      name: r.name,
+                      phone: r.phone || "",
+                      department: r.department,
+                      teamLead: r.teamLead || "",
+                      title: r.title || "",
+                      active: r.person?.active,
+                      consistencyRate: r.c?.rate,
+                      submissionCount: r.c?.count,
+                    }));
+                    exportPeopleFullCSV(exportRows, "people_full");
+                  },
+                },
+              ]}
+            />
             <button className="btn-primary" onClick={openNew}>
               <Plus size={16} /> Add person
             </button>
@@ -270,7 +250,7 @@ export default function PeoplePage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <KpiCard label="People tracked" value={rows.length} icon={Users} tone="brand" />
         <KpiCard label="Teams (by lead)" value={teamCount} icon={Network} tone="sky" />
         <KpiCard label="Departments" value={departments.length} icon={Users} tone="violet" />

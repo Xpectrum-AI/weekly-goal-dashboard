@@ -7,7 +7,6 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Download,
   CheckCircle2,
   Circle,
   ChevronRight,
@@ -19,6 +18,7 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { Card } from "@/components/ui/Card";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Avatar } from "@/components/ui/Avatar";
@@ -86,7 +86,6 @@ function SubmissionsPageContent() {
   const [draft, setDraft] = useState<SubmissionDraft | null>(null);
   const [editing, setEditing] = useState<WeeklySubmission | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [showExportMenu, setShowExportMenu] = useState(false);
   const [assignDraft, setAssignDraft] = useState<AssignTaskDraft | null>(null);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 
@@ -195,44 +194,20 @@ function SubmissionsPageContent() {
         description="Each person's weekly priority and action items, grouped by week. Tick items off as they're done."
         actions={
           <>
-            <div className="relative">
-              <button className="btn-outline" onClick={() => setShowExportMenu(!showExportMenu)}>
-                <Download size={16} /> Export
-              </button>
-              {showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
-                      onClick={() => {
-                        exportSubmissionsCSV(filtered, "weekly_goals");
-                        setShowExportMenu(false);
-                      }}
-                    >
-                      <Download size={14} />
-                      <div>
-                        <p className="font-medium">Template format</p>
-                        <p className="text-[11px] text-ink-400">Compatible with import</p>
-                      </div>
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
-                      onClick={() => {
-                        exportSubmissionsFullCSV(scoreAll(filtered), "weekly_goals_full");
-                        setShowExportMenu(false);
-                      }}
-                    >
-                      <Download size={14} />
-                      <div>
-                        <p className="font-medium">Full export</p>
-                        <p className="text-[11px] text-ink-400">Includes all metadata</p>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <ExportMenu
+              options={[
+                {
+                  label: "Template format",
+                  hint: "Compatible with import",
+                  onSelect: () => exportSubmissionsCSV(filtered, "weekly_goals"),
+                },
+                {
+                  label: "Full export",
+                  hint: "Includes all metadata",
+                  onSelect: () => exportSubmissionsFullCSV(scoreAll(filtered), "weekly_goals_full"),
+                },
+              ]}
+            />
             <button className="btn-outline" onClick={openAssign}>
               <UserPlus size={16} /> Assign
             </button>

@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertOctagon, Flag, Repeat, MessageCircle, Download, Sparkles } from "lucide-react";
+import { AlertOctagon, Flag, Repeat, MessageCircle, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
+import { ExportMenu } from "@/components/ui/ExportMenu";
 import { Card, CardHeader, CardBody } from "@/components/ui/Card";
 import { ThemeChip } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -27,7 +28,6 @@ export default function BlockersPage() {
   const themeIdx = useThemeIndex();
   const { weeks } = useWeeks();
   const [week, setWeek] = useState("all");
-  const [showExportMenu, setShowExportMenu] = useState(false);
   
   // Get stored insight for the selected week (null if "all" or not found)
   const storedInsight = useInsightForWeek(week === "all" ? "" : week);
@@ -64,44 +64,25 @@ export default function BlockersPage() {
         description="Recurring blockers and priority themes derived from raw WhatsApp text"
         actions={
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <button 
-                className="btn-outline"
-                onClick={() => setShowExportMenu(!showExportMenu)}
-              >
-                <Download size={16} /> Export
-              </button>
-              {showExportMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowExportMenu(false)} />
-                  <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-ink-200 bg-white py-1 shadow-lg">
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-ink-700 hover:bg-ink-50"
-                      onClick={() => {
-                        const blockerRows: BlockerExportRow[] = raw.map((b) => ({
-                          personName: b.personName,
-                          department: b.department,
-                          teamLead: b.teamLead || "",
-                          week: b.week,
-                          blocker: b.text,
-                          theme: b.theme,
-                        }));
-                        exportBlockersCSV(blockerRows, `blockers${week !== "all" ? `_${week}` : ""}`);
-                        setShowExportMenu(false);
-                      }}
-                    >
-                      <Download size={14} />
-                      <div>
-                        <p className="font-medium">Export blockers</p>
-                        <p className="text-[11px] text-ink-400">
-                          {raw.length} blocker{raw.length !== 1 ? "s" : ""} with themes
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+            <ExportMenu
+              options={[
+                {
+                  label: "Export blockers",
+                  hint: `${raw.length} blocker${raw.length !== 1 ? "s" : ""} with themes`,
+                  onSelect: () => {
+                    const blockerRows: BlockerExportRow[] = raw.map((b) => ({
+                      personName: b.personName,
+                      department: b.department,
+                      teamLead: b.teamLead || "",
+                      week: b.week,
+                      blocker: b.text,
+                      theme: b.theme,
+                    }));
+                    exportBlockersCSV(blockerRows, `blockers${week !== "all" ? `_${week}` : ""}`);
+                  },
+                },
+              ]}
+            />
             <Select value={week} onChange={(e) => setWeek(e.target.value)} className="w-44">
               <option value="all">All weeks</option>
               {weeks.map((w) => (
@@ -112,7 +93,7 @@ export default function BlockersPage() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <KpiCard label="Blockers reported" value={totalBlockers} icon={AlertOctagon} tone="rose" deltaLabel={week === "all" ? "across all weeks" : weekLabel(week)} />
         <KpiCard label="Distinct blocker themes" value={bThemes.length} icon={Flag} tone="amber" />
         <KpiCard label="People with repeat blockers" value={repeats.length} icon={Repeat} tone="violet" deltaLabel="2+ weeks blocked" />
