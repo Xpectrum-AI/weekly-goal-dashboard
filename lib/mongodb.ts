@@ -19,7 +19,13 @@ function clientPromise(): Promise<MongoClient> {
   if (!uri) throw new Error("MONGODB_URI is not set in the environment");
   if (!global._mongoClientPromise) {
     const client = new MongoClient(uri, { serverSelectionTimeoutMS: 8000 });
-    global._mongoClientPromise = client.connect();
+    // If the initial connect fails (cluster paused, IP not allowlisted, etc.)
+    // clear the cached promise so the next request retries instead of being
+    // stuck with a permanently-rejected promise until the server restarts.
+    global._mongoClientPromise = client.connect().catch((err) => {
+      global._mongoClientPromise = undefined;
+      throw err;
+    });
   }
   return global._mongoClientPromise;
 }

@@ -9,15 +9,24 @@ import type { Person } from "@/lib/types";
 export type PersonDraft = Omit<Person, "_id">;
 
 const PALETTE = ["#6366f1", "#0ea5e9", "#ec4899", "#10b981", "#f59e0b", "#8b5cf6"];
+const LEVELS = [
+  { value: 1, label: "Level 1 — Founder / CEO" },
+  { value: 2, label: "Level 2 — Executive Leadership" },
+  { value: 3, label: "Level 3 — Department Head" },
+  { value: 4, label: "Level 4 — Team Lead" },
+  { value: 5, label: "Level 5 — Employee" },
+];
 
 export function emptyPerson(): PersonDraft {
   return {
     name: "",
+    email: "",
     phone: "",
     department: "",
     teamLead: "",
     title: "",
     active: true,
+    level: 5,
     joinedAt: new Date().toISOString().slice(0, 10),
     avatarColor: PALETTE[0],
   };
@@ -47,6 +56,14 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Full name" required>
           <TextInput value={value.name} onChange={(e) => set("name", e.target.value)} placeholder="Jordan Avery" />
+        </Field>
+        <Field label="Email" required>
+          <TextInput
+            type="email"
+            value={value.email || ""}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="jordan@company.com"
+          />
         </Field>
         <Field
           label="WhatsApp number"
@@ -96,9 +113,18 @@ export function PersonForm({ value, onChange }: { value: PersonDraft; onChange: 
           </Select>
         </Field>
       </div>
-      <Field label="Title">
-        <TextInput value={value.title} onChange={(e) => set("title", e.target.value)} placeholder="Software Engineer" />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Level" required>
+          <Select value={String(value.level ?? 5)} onChange={(e) => set("level", Number(e.target.value))}>
+            {LEVELS.map((l) => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Title">
+          <TextInput value={value.title} onChange={(e) => set("title", e.target.value)} placeholder="Software Engineer" />
+        </Field>
+      </div>
       <Field label="Avatar color">
         <div className="flex gap-2">
           {PALETTE.map((c) => (

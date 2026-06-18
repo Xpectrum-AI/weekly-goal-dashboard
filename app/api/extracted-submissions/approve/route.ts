@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { getDb, COLLECTIONS } from "@/lib/mongodb";
 import { uid } from "@/lib/utils";
 import type { ExtractedSubmission, WeeklySubmission } from "@/lib/types";
+import { getAuthContext } from "@/lib/auth-middleware";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const db = await getDb();
     const { ids, uploadId } = await req.json();
     

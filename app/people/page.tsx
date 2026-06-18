@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Users, Plus, Pencil, Trash2, Phone, Network, Send, Loader2, CheckCircle2, X } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, Phone, Network, Send, Loader2, CheckCircle2, X, Mail, UserX, UserCheck } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ExportMenu } from "@/components/ui/ExportMenu";
+import { RowMenu, type RowMenuItem } from "@/components/ui/RowMenu";
 import { Card } from "@/components/ui/Card";
 import { FilterBar } from "@/components/ui/FilterBar";
 import { Modal, ConfirmDialog } from "@/components/ui/Modal";
@@ -12,6 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { PersonForm, emptyPerson, type PersonDraft } from "@/components/forms/PersonForm";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
 import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission, computeLevel } from "@/lib/org";
 import { sendNudge } from "@/lib/nudge";
@@ -24,15 +26,23 @@ export default function PeoplePage() {
   const { weeks, currentWeek } = useWeeks();
   const { departments, teamLeads } = useFacets();
   const { people, submissions, roster, viewer, isOrgWide } = useScope();
-  const addPerson = useStore((s) => s.addPerson);
+  const invitePerson = useStore((s) => s.invitePerson);
+  const resendInvite = useStore((s) => s.resendInvite);
+  const setPersonActive = useStore((s) => s.setPersonActive);
   const updatePerson = useStore((s) => s.updatePerson);
   const deletePerson = useStore((s) => s.deletePerson);
+
+  const { employee: authEmployee } = useAuth();
+  // Inviting new employees is leadership-only (levels 1–3); the server enforces
+  // this too. Managing existing reports (resend/deactivate) is scoped server-side.
+  const canInvite = (authEmployee?.level ?? 5) <= 3;
 
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState<PersonDraft | null>(null);
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<Person | null>(null);
 
   // Post-save reminder: when a saved person is still pending this week, offer to
   // send them the WhatsApp alignment nudge.
@@ -157,14 +167,20 @@ export default function PeoplePage() {
     const { _id, ...rest } = p;
     setDraft(rest);
   }
-  function save() {
+  async function save() {
     if (!draft) return;
     // Always store the phone with the +91 country code, and auto-detect the org
     // level from the chosen team lead (level 1 = top, each step down adds one).
     const level = computeLevel(draft.teamLead ?? null, people);
     const cleaned = { ...draft, phone: normalizePhone(draft.phone), level };
-    if (editing) updatePerson(editing._id, cleaned);
-    else addPerson(cleaned);
+    if (editing) {
+      updatePerson(editing._id, cleaned);
+    } else {
+      // New person: create the employee record AND send a PropelAuth invite
+      // email so they can sign in. Abort the post-save flow if it failed.
+      const created = await invitePerson(cleaned);
+      if (!created) return;
+    }
     setDraft(null);
     setEditing(null);
 
@@ -191,20 +207,42 @@ export default function PeoplePage() {
     if (ok) setTimeout(() => setNudgePerson(null), 1200);
   }
 
+  // Build the 3-dot row menu for a given person. Resend/deactivate are scoped
+  // server-side to people the caller can manage; failures surface as toasts.
+  function rowMenuItems(person: Person, isTopLevel: boolean): RowMenuItem[] {
+    const isInactive = person.active === false;
+    return [
+      { label: "Edit", icon: Pencil, onSelect: () => openEdit(person) },
+      {
+        label: "Resend invite",
+        icon: Mail,
+        hidden: !person.email,
+        onSelect: () => resendInvite(person._id),
+      },
+      isInactive
+        ? {
+            label: "Reactivate",
+            icon: UserCheck,
+            onSelect: () => setPersonActive(person._id, true),
+          }
+        : {
+            label: "Deactivate",
+            icon: UserX,
+            hidden: isTopLevel,
+            onSelect: () => setDeactivateTarget(person),
+          },
+      {
+        label: "Delete",
+        icon: Trash2,
+        danger: true,
+        hidden: isTopLevel,
+        onSelect: () => setDeleteId(person._id),
+      },
+    ];
+  }
+
   return (
     <div className="animate-fade-in">
-      {viewer && !isOrgWide && (
-        <div className="mb-4 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <div className="rounded-full bg-violet-200 p-1">
-              <Users size={14} className="text-violet-700" />
-            </div>
-            <p className="text-sm font-medium text-violet-900">
-              Filtered View: Showing only <span className="font-semibold">{viewer.name}</span> and their team ({people.length} {people.length === 1 ? 'person' : 'people'})
-            </p>
-          </div>
-        </div>
-      )}
       <PageHeader
         title="People & Teams"
         description={
@@ -243,9 +281,11 @@ export default function PeoplePage() {
                 },
               ]}
             />
-            <button className="btn-primary" onClick={openNew}>
-              <Plus size={16} /> Add person
-            </button>
+            {canInvite && (
+              <button className="btn-primary" onClick={openNew}>
+                <Plus size={16} /> Add &amp; invite
+              </button>
+            )}
           </>
         }
       />
@@ -391,15 +431,8 @@ export default function PeoplePage() {
                     </td>
                     <td className="px-5 py-3">
                       {e.person && (
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 transition group-hover:opacity-100">
-                          <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
-                            <Pencil size={15} />
-                          </button>
-                          {!e.isTopLevel && (
-                            <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                              <Trash2 size={15} />
-                            </button>
-                          )}
+                        <div className="flex items-center justify-end transition opacity-60 group-hover:opacity-100">
+                          <RowMenu items={rowMenuItems(e.person, e.isTopLevel)} />
                         </div>
                       )}
                     </td>
@@ -443,15 +476,8 @@ export default function PeoplePage() {
                           </p>
                         </div>
                         {e.person && (
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
-                              <Pencil size={15} />
-                            </button>
-                            {!e.isTopLevel && (
-                              <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                                <Trash2 size={15} />
-                              </button>
-                            )}
+                          <div className="flex shrink-0 items-center">
+                            <RowMenu items={rowMenuItems(e.person, e.isTopLevel)} />
                           </div>
                         )}
                       </div>
@@ -513,14 +539,24 @@ export default function PeoplePage() {
       <Modal
         open={!!draft}
         onClose={() => setDraft(null)}
-        title={editing ? "Edit person" : "Add person"}
-        subtitle="Writes to the people collection"
+        title={editing ? "Edit person" : "Add & invite person"}
+        subtitle={editing ? "Updates the employee record" : "Creates the record and emails a sign-in invite"}
         size="md"
         footer={
           <>
             <button className="btn-outline" onClick={() => setDraft(null)}>Cancel</button>
-            <button className="btn-primary" onClick={save} disabled={!draft?.name.trim() || !isValidPhone(draft?.phone ?? "") || !draft?.department?.trim() || !draft?.teamLead?.trim()}>
-              {editing ? "Save changes" : "Add person"}
+            <button
+              className="btn-primary"
+              onClick={save}
+              disabled={
+                !draft?.name.trim() ||
+                !isValidPhone(draft?.phone ?? "") ||
+                !draft?.department?.trim() ||
+                !draft?.teamLead?.trim() ||
+                (!editing && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft?.email?.trim() ?? ""))
+              }
+            >
+              {editing ? "Save changes" : "Send invite"}
             </button>
           </>
         }
@@ -535,6 +571,17 @@ export default function PeoplePage() {
         title="Remove person?"
         message="This person will be removed from the roster. Their past submissions remain."
         confirmLabel="Remove"
+      />
+
+      <ConfirmDialog
+        open={!!deactivateTarget}
+        onClose={() => setDeactivateTarget(null)}
+        onConfirm={() => {
+          if (deactivateTarget) setPersonActive(deactivateTarget._id, false);
+        }}
+        title="Deactivate employee?"
+        message={`${deactivateTarget?.name ?? "This person"} will lose dashboard access and their login will be disabled. Their history and reporting structure remain. You can reactivate them anytime.`}
+        confirmLabel="Deactivate"
       />
 
       <Modal

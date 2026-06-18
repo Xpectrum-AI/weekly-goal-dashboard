@@ -29,6 +29,7 @@ import { AssignTaskForm, emptyAssignTask, type AssignTaskDraft } from "@/compone
 import { sendTaskAssigned } from "@/lib/nudge";
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
+import { useAuth } from "@/components/auth";
 import {
   priorityText,
   priorityItems,
@@ -73,6 +74,11 @@ function SubmissionsPageContent() {
   // The current persona is the assigner. Org-wide view = level 1 (can assign to all).
   const assignerLevel = viewer?.level ?? 1;
   const assignerName = viewer?.name ?? "Leadership";
+
+  // Levels 4–5 can only edit the current week's goal — past weeks are read-only.
+  // Based on the actual logged-in user, not the selected "viewing as" persona.
+  const { employee } = useAuth();
+  const selfOnly = typeof employee?.level === "number" && employee.level >= 4;
 
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string>>(() => {
@@ -272,6 +278,7 @@ function SubmissionsPageContent() {
                     s={g.submission}
                     name={g.name}
                     tasks={g.tasks}
+                    readOnly={selfOnly && week !== currentWeek}
                     onSave={(patch) => g.submission && updateSubmission(g.submission._id, patch)}
                     onEdit={() => g.submission && openEdit(g.submission)}
                     onDelete={() => g.submission && setDeleteId(g.submission._id)}
@@ -361,6 +368,7 @@ function GoalCard({
   onDelete,
   onToggleTask,
   onDeleteTask,
+  readOnly = false,
 }: {
   s?: WeeklySubmission;
   name: string;
@@ -370,6 +378,8 @@ function GoalCard({
   onDelete: () => void;
   onToggleTask: (t: AssignedTask) => void;
   onDeleteTask: (id: string) => void;
+  /** Levels 4–5 viewing a past week: toggles/edit/delete are disabled. */
+  readOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -395,10 +405,14 @@ function GoalCard({
     JSON.stringify(priorities) !== JSON.stringify(storedPriorities) ||
     JSON.stringify(actions) !== JSON.stringify(storedActions);
 
-  const togglePriority = (idx: number) =>
+  const togglePriority = (idx: number) => {
+    if (readOnly) return;
     setPriorities((prev) => prev.map((p, i) => (i === idx ? { ...p, completed: !p.completed } : p)));
-  const toggleAction = (idx: number) =>
+  };
+  const toggleAction = (idx: number) => {
+    if (readOnly) return;
     setActions((prev) => prev.map((a, i) => (i === idx ? { ...a, completed: !a.completed } : a)));
+  };
 
   const save = async () => {
     setSaving(true);
@@ -474,7 +488,12 @@ function GoalCard({
             </div>
           </div>
         </button>
-        {s && (
+        {s && readOnly && (
+          <span className="shrink-0 rounded-full bg-ink-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-400">
+            Read-only
+          </span>
+        )}
+        {s && !readOnly && (
           <div className="flex shrink-0 items-center gap-1">
             <button onClick={onEdit} className="rounded-lg p-1.5 text-ink-400 opacity-100 transition hover:bg-ink-100 hover:text-ink-700 sm:opacity-0 sm:group-hover:opacity-100">
               <Pencil size={15} />
@@ -496,7 +515,7 @@ function GoalCard({
               </p>
               <div className="space-y-1">
                 {priorities.map((p, i) => (
-                  <GoalRow key={i} text={p.text} done={p.completed} onToggle={() => togglePriority(i)} emphasis />
+                  <GoalRow key={i} text={p.text} done={p.completed} onToggle={() => togglePriority(i)} emphasis readOnly={readOnly} />
                 ))}
               </div>
             </div>
@@ -507,7 +526,7 @@ function GoalCard({
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-ink-400">Actions</p>
               <div className="space-y-1">
                 {actions.map((a, i) => (
-                  <GoalRow key={i} text={a.text} done={a.completed} onToggle={() => toggleAction(i)} />
+                  <GoalRow key={i} text={a.text} done={a.completed} onToggle={() => toggleAction(i)} readOnly={readOnly} />
                 ))}
               </div>
             </div>
@@ -520,7 +539,7 @@ function GoalCard({
               </p>
               <div className="space-y-1.5">
                 {tasks.map((t) => (
-                  <TaskRow key={t._id} t={t} onToggle={() => onToggleTask(t)} onDelete={() => onDeleteTask(t._id)} />
+                  <TaskRow key={t._id} t={t} onToggle={() => onToggleTask(t)} onDelete={() => onDeleteTask(t._id)} readOnly={readOnly} />
                 ))}
               </div>
             </div>
@@ -570,8 +589,9 @@ function GoalCard({
   );
 }
 
-function TaskRow({ t, onToggle, onDelete }: { t: AssignedTask; onToggle: () => void; onDelete: () => void }) {
+function TaskRow({ t, onToggle, onDelete, readOnly = false }: { t: AssignedTask; onToggle: () => void; onDelete: () => void; readOnly?: boolean }) {
   const overdue = !t.completed && !!t.deadline && t.deadline < new Date().toISOString().slice(0, 10);
+  const toggle = readOnly ? () => {} : onToggle;
   return (
     <div
       className={cn(
@@ -580,14 +600,14 @@ function TaskRow({ t, onToggle, onDelete }: { t: AssignedTask; onToggle: () => v
       )}
     >
       <div className="flex items-start gap-2">
-        <button type="button" onClick={onToggle} className="mt-0.5 shrink-0">
+        <button type="button" onClick={toggle} className="mt-0.5 shrink-0">
           {t.completed ? (
             <CheckCircle2 size={17} className="text-emerald-500" />
           ) : (
             <Circle size={17} className="text-violet-400" />
           )}
         </button>
-        <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left">
+        <button type="button" onClick={toggle} className="min-w-0 flex-1 text-left">
           <span className={cn("block break-words text-sm leading-snug", t.completed ? "text-emerald-700 line-through" : "font-medium text-ink-800")}>
             {t.text}
           </span>
@@ -597,9 +617,11 @@ function TaskRow({ t, onToggle, onDelete }: { t: AssignedTask; onToggle: () => v
             <AlertTriangle size={9} /> Urgent
           </span>
         )}
-        <button onClick={onDelete} className="mt-0.5 shrink-0 rounded p-0.5 text-ink-300 hover:bg-rose-50 hover:text-rose-600">
-          <Trash2 size={13} />
-        </button>
+        {!readOnly && (
+          <button onClick={onDelete} className="mt-0.5 shrink-0 rounded p-0.5 text-ink-300 hover:bg-rose-50 hover:text-rose-600">
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
       <div className="ml-7 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-ink-400">
         <span>by {t.assignedBy || "Leadership"}</span>
@@ -638,21 +660,25 @@ function GoalRow({
   done,
   onToggle,
   emphasis,
+  readOnly = false,
 }: {
   text: string;
   done: boolean;
   onToggle: () => void;
   emphasis?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
+      disabled={readOnly}
       className={cn(
         "flex w-full items-start gap-2 rounded-lg border px-2 py-1.5 text-left transition",
+        readOnly && "cursor-default",
         done
-          ? "border-emerald-200 bg-emerald-50/70 hover:bg-emerald-50"
-          : "border-amber-200 bg-amber-50/70 hover:bg-amber-50"
+          ? cn("border-emerald-200 bg-emerald-50/70", !readOnly && "hover:bg-emerald-50")
+          : cn("border-amber-200 bg-amber-50/70", !readOnly && "hover:bg-amber-50")
       )}
     >
       {done ? (

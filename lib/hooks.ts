@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useStore } from "./store";
+import { useAuth } from "@/components/auth/AuthProvider";
 import { weekNum, getCurrentWeek } from "./utils";
 import {
   buildRoster,
@@ -23,9 +24,13 @@ import type { ThemeIndex } from "./analytics";
 export function useLoaded(): boolean {
   const loaded = useStore((s) => s.loaded);
   const load = useStore((s) => s.load);
+  const { accessToken } = useAuth();
+  // Only load once the auth token is wired into the API client. When PropelAuth
+  // isn't configured (dev fallback), there's no token — load immediately.
+  const authConfigured = !!process.env.NEXT_PUBLIC_PROPELAUTH_AUTH_URL;
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!authConfigured || accessToken) load();
+  }, [load, accessToken, authConfigured]);
   return loaded;
 }
 

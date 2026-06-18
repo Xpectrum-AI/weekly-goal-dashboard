@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { getDb, COLLECTIONS } from "@/lib/mongodb";
 import { uid } from "@/lib/utils";
 import type { ExtractedSubmission } from "@/lib/types";
+import { getAuthContext } from "@/lib/auth-middleware";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const { searchParams } = new URL(req.url);
     const uploadId = searchParams.get("uploadId");
     
@@ -26,6 +30,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const db = await getDb();
     const body = await req.json();
     const rows = Array.isArray(body) ? body : [body];

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getDb, COLLECTIONS } from "@/lib/mongodb";
+import { getAuthContext } from "@/lib/auth-middleware";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const { id } = await params;
     const db = await getDb();
     const doc = await db.collection(COLLECTIONS.uploads).findOne({ _id: id } as any);
@@ -18,6 +22,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const { id } = await params;
     const db = await getDb();
     const patch = await req.json();
@@ -31,6 +38,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const ctx = await getAuthContext(req);
+    if (ctx instanceof NextResponse) return ctx;
+
     const { id } = await params;
     const db = await getDb();
     

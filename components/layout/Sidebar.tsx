@@ -15,6 +15,7 @@ import {
   NotebookPen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const NAV = [
   { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -27,8 +28,14 @@ const NAV = [
   { href: "/notepad", label: "Notepad", icon: NotebookPen },
 ];
 
+// Levels 4–5 only get the Weekly Goals and Notepad tabs.
+const SELF_ONLY_HREFS = new Set(["/submissions", "/notepad"]);
+
 export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const { employee } = useAuth();
+  const selfOnly = typeof employee?.level === "number" && employee.level >= 4;
+  const nav = selfOnly ? NAV.filter((item) => SELF_ONLY_HREFS.has(item.href)) : NAV;
 
   return (
     <>
@@ -56,7 +63,7 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
 
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <div className="space-y-0.5">
-            {NAV.map((item) => {
+            {nav.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               const Icon = item.icon;
               return (

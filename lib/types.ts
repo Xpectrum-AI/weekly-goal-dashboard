@@ -29,6 +29,10 @@ export interface Person {
   employeeId?: string;
   /** Org depth: 1 = Founder/CEO (top). Higher number = further down the org. */
   level?: number;
+  /** Email address (required for authentication). */
+  email?: string;
+  /** PropelAuth user ID — links this employee to their auth account. */
+  authUserId?: string;
 }
 
 // ── weekly_submissions ──────────────────────────────────────────────────────

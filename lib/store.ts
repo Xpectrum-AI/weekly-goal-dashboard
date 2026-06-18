@@ -52,6 +52,9 @@ interface StoreState {
 
   // people
   addPerson: (p: Omit<Person, "_id">) => Promise<void>;
+  invitePerson: (p: Omit<Person, "_id">) => Promise<Person | null>;
+  resendInvite: (employeeId: string) => Promise<void>;
+  setPersonActive: (employeeId: string, active: boolean) => Promise<void>;
   updatePerson: (id: string, patch: Partial<Person>) => Promise<void>;
   deletePerson: (id: string) => Promise<void>;
   bulkAddPeople: (rows: Omit<Person, "_id">[]) => Promise<void>;
@@ -157,6 +160,52 @@ export const useStore = create<StoreState>((set, get) => ({
       get().pushToast("Person added");
     } catch {
       get().pushToast("Save failed", "error");
+    }
+  },
+  invitePerson: async (p) => {
+    try {
+      const doc = await api.inviteEmployee({
+        name: p.name,
+        email: p.email ?? "",
+        phone: p.phone,
+        department: p.department,
+        teamLead: p.teamLead ?? undefined,
+        level: p.level ?? 5,
+        title: p.title,
+      });
+      set((st) => ({ people: [doc, ...st.people] }));
+      get().pushToast(`Invite sent to ${p.email}`);
+      return doc;
+    } catch (e) {
+      const msg = e instanceof Error && e.message ? e.message : "Could not send invite";
+      get().pushToast(msg, "error");
+      return null;
+    }
+  },
+  resendInvite: async (employeeId) => {
+    try {
+      const res = await api.resendInvite(employeeId);
+      get().pushToast((res as { message?: string }).message ?? "Invite re-sent");
+      // The account may have just been linked (authUserId backfilled); refresh
+      // so the people list reflects it.
+      if ((res as { linked?: boolean }).linked) get().reload();
+    } catch (e) {
+      const msg = e instanceof Error && e.message ? e.message : "Could not resend invite";
+      get().pushToast(msg, "error");
+    }
+  },
+  setPersonActive: async (id, active) => {
+    try {
+      // NOTE: the API param is named "employeeId" but the routes key on Mongo _id.
+      if (active) await api.reactivateEmployee(id);
+      else await api.deactivateEmployee(id);
+      set((st) => ({
+        people: st.people.map((x) => (x._id === id ? { ...x, active } : x)),
+      }));
+      get().pushToast(active ? "Employee reactivated" : "Employee deactivated", "info");
+    } catch (e) {
+      const msg = e instanceof Error && e.message ? e.message : "Action failed";
+      get().pushToast(msg, "error");
     }
   },
   updatePerson: async (id, patch) => {

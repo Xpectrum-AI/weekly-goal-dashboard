@@ -61,6 +61,8 @@ export function normalizePerson(d: any): Person {
     avatarColor: d.avatarColor || colorFor(name),
     employeeId: d.employeeId ?? undefined,
     level: typeof d.level === "number" ? d.level : undefined,
+    email: d.email ?? "",
+    authUserId: d.authUserId ?? undefined,
   };
 }
 

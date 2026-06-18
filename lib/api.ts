@@ -2,10 +2,33 @@
 
 import type { Person, WeeklySubmission, WeeklyInsight, Upload, ExtractedSubmission, Note, AssignedTask } from "./types";
 
+// ─── Token management ────────────────────────────────────────────────────────
+// The auth token is set by the AuthProvider once the user is authenticated.
+// All API calls automatically include it in the Authorization header.
+let _accessToken: string | null = null;
+
+export function setApiToken(token: string | null) {
+  _accessToken = token;
+}
+
+export function getApiToken(): string | null {
+  return _accessToken;
+}
+
 async function req<T>(url: string, opts?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(opts?.headers as Record<string, string> ?? {}),
+  };
+
+  // Attach auth token if available
+  if (_accessToken) {
+    headers["Authorization"] = `Bearer ${_accessToken}`;
+  }
+
   const res = await fetch(url, {
     ...opts,
-    headers: { "Content-Type": "application/json", ...(opts?.headers ?? {}) },
+    headers,
   });
   if (!res.ok) {
     let msg = res.statusText;
@@ -13,6 +36,10 @@ async function req<T>(url: string, opts?: RequestInit): Promise<T> {
       msg = (await res.json()).error ?? msg;
     } catch {
       /* ignore */
+    }
+    // If unauthorized, could trigger re-auth
+    if (res.status === 401) {
+      msg = "Session expired. Please log in again.";
     }
     throw new Error(msg);
   }
@@ -67,4 +94,14 @@ export const api = {
   createNote: (n: Pick<Note, "title" | "content" | "owner" | "ownerName">) => req<Note>("/api/notes", { method: "POST", body: JSON.stringify(n) }),
   updateNote: (id: string, patch: Partial<Pick<Note, "title" | "content">>) => req<Note>(`/api/notes/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteNote: (id: string) => req<{ ok: boolean }>(`/api/notes/${id}`, { method: "DELETE" }),
+
+  // auth / employee management
+  inviteEmployee: (data: { name: string; email: string; phone?: string; department: string; teamLead?: string; level: number; title?: string }) =>
+    req<Person>("/api/auth/invite", { method: "POST", body: JSON.stringify(data) }),
+  deactivateEmployee: (employeeId: string, disableAuth = true) =>
+    req<{ ok: boolean }>("/api/auth/deactivate", { method: "POST", body: JSON.stringify({ employeeId, disableAuth }) }),
+  reactivateEmployee: (employeeId: string) =>
+    req<{ ok: boolean }>("/api/auth/reactivate", { method: "POST", body: JSON.stringify({ employeeId }) }),
+  resendInvite: (employeeId: string) =>
+    req<{ ok: boolean }>("/api/auth/resend-invite", { method: "POST", body: JSON.stringify({ employeeId }) }),
 };
