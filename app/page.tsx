@@ -26,7 +26,7 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { TrendArea } from "@/components/charts/Charts";
-import { useLoaded, useWeeks, useScope, useInsightForWeek, useInsightsForWeeks } from "@/lib/hooks";
+import { useLoaded, useWeeks, useScope, useInsightForWeek, useInsightsForWeeks, useScopedInsight } from "@/lib/hooks";
 import {
   recentSubmissions,
   weakSubmissions,
@@ -37,9 +37,10 @@ import { priorityText, actionTexts } from "@/lib/goals";
 
 export default function OverviewPage() {
   const hydrated = useLoaded();
-  const { submissions, roster, label, isOrgWide, assignedTasks } = useScope();
+  const { submissions, roster, label, assignedTasks } = useScope();
   const { weeks, currentWeek, setSelectedWeek } = useWeeks();
   const storedInsight = useInsightForWeek(currentWeek);
+  const scopedInsight = useScopedInsight(storedInsight, currentWeek);
   const allInsights = useInsightsForWeeks(weeks);
 
   const [generatingInsights, setGeneratingInsights] = useState(false);
@@ -105,27 +106,27 @@ export default function OverviewPage() {
 
   const thisWeek = submissions.filter((s) => s.week === currentWeek);
   
-  // Only use stored insight metrics from MongoDB - no fallback
-  const hasStoredInsight = storedInsight && isOrgWide;
+  // Use scoped insight — works for both org-wide and sub-manager views
+  const hasStoredInsight = !!scopedInsight;
   
   const c = hasStoredInsight
     ? {
-        expected: storedInsight.expected,
-        received: storedInsight.received,
-        missing: storedInsight.missing,
-        rate: storedInsight.complianceRate,
+        expected: scopedInsight.expected,
+        received: scopedInsight.received,
+        missing: scopedInsight.missing,
+        rate: scopedInsight.complianceRate,
       }
     : { expected: 0, received: 0, missing: 0, rate: 0 };
   
-  const avgComplete = hasStoredInsight ? storedInsight.avgCompleteness : null;
-  const blockerCount = hasStoredInsight ? storedInsight.blockerCount : null;
+  const avgComplete = hasStoredInsight ? scopedInsight.avgCompleteness : null;
+  const blockerCount = hasStoredInsight ? scopedInsight.blockerCount : null;
   
   // Keep the full array for displaying in the UI
   const weakThisWeek = weakSubmissions(thisWeek);
-  const weakCount = hasStoredInsight ? storedInsight.weakCount : null;
+  const weakCount = hasStoredInsight ? scopedInsight.weakCount : null;
   
-  // Use stored AI-derived priority themes when available (only from MongoDB)
-  const pThemes = hasStoredInsight ? storedInsight.priorityThemes : [];
+  // Use stored AI-derived priority themes when available (scoped to viewer's team)
+  const pThemes = hasStoredInsight ? scopedInsight.priorityThemes : [];
   
   const recent = recentSubmissions(submissions, 7);
   const missing = missingSubmitters(roster, submissions, currentWeek);

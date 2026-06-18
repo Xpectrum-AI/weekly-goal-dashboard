@@ -12,7 +12,7 @@ import { ProgressBar } from "@/components/ui/Progress";
 import { EmptyState, Skeleton } from "@/components/ui/States";
 import { Select } from "@/components/ui/Form";
 import { useStore } from "@/lib/store";
-import { useLoaded, useWeeks, useScope, useInsightForWeek, useThemeIndex } from "@/lib/hooks";
+import { useLoaded, useWeeks, useScope, useInsightForWeek, useThemeIndex, useScopedInsight, useScopedInsights } from "@/lib/hooks";
 import {
   rawBlockers,
   combineThemes,
@@ -23,8 +23,9 @@ import { weekLabel, weekShort, cn } from "@/lib/utils";
 
 export default function BlockersPage() {
   const hydrated = useLoaded();
-  const { submissions, isOrgWide } = useScope();
+  const { submissions } = useScope();
   const insights = useStore((s) => s.insights);
+  const scopedInsights = useScopedInsights(insights);
   const themeIdx = useThemeIndex();
   const { weeks } = useWeeks();
   const [week, setWeek] = useState("all");
@@ -54,14 +55,15 @@ export default function BlockersPage() {
 
   // Get stored insight for the selected week (null if "all" or not found)
   const storedInsight = useInsightForWeek(week === "all" ? "" : week);
+  const scopedInsight = useScopedInsight(storedInsight, week === "all" ? "" : week);
 
   const scoped = useMemo(
     () => (week === "all" ? submissions : submissions.filter((s) => s.week === week)),
     [submissions, week]
   );
 
-  // Only use AI themes from stored insights in MongoDB - no fallback
-  const relevant = week === "all" ? insights : insights.filter((i) => i.week === week);
+  // Use scoped insights for themes (works for both org-wide and sub-managers)
+  const relevant = week === "all" ? scopedInsights : scopedInsights.filter((i) => i.week === week);
   const hasInsights = relevant.length > 0;
   
   const aiBlocker = combineThemes(relevant.map((i) => i.blockerThemes)).filter(
@@ -84,9 +86,9 @@ export default function BlockersPage() {
   }, [raw, selectedTheme, selectedRecurring]);
   const repeats = recurringBlockers(scoped);
   
-  // Use stored blocker count when viewing a single week at org level
-  const totalBlockers = (week !== "all" && storedInsight && isOrgWide)
-    ? storedInsight.blockerCount
+  // Use scoped blocker count when viewing a single week
+  const totalBlockers = (week !== "all" && scopedInsight)
+    ? scopedInsight.blockerCount
     : scoped.reduce((a, s) => a + s.blockers.length, 0);
 
   return (

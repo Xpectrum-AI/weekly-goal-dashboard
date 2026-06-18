@@ -132,6 +132,149 @@ export function useInsightsForWeeks(weeks: string[]): import("./types").WeeklyIn
   }, [insights, weeks]);
 }
 
+/**
+ * Returns an insight scoped to the current viewer's team.
+ * For org-wide (level 1) viewers, returns the raw stored insight unchanged.
+ * For sub-managers, filters the per-submission theme maps to only include
+ * submissions belonging to their team, then recomputes metrics accordingly.
+ */
+export function useScopedInsight(
+  insight: import("./types").WeeklyInsight | null,
+  week: string
+): import("./types").WeeklyInsight | null {
+  const { viewer, submissions, roster, isOrgWide } = useScope();
+  return useMemo(() => {
+    if (!insight) return null;
+    // Org-wide viewers get the full insight as-is
+    if (isOrgWide) return insight;
+
+    // Get submission IDs that belong to the viewer's scoped team for this week
+    const weekSubs = submissions.filter((s) => s.week === week);
+    const scopedIds = new Set(weekSubs.map((s) => s._id));
+
+    // Filter per-submission theme maps to only in-scope submissions
+    const scopedPriority: Record<string, string> = {};
+    if (insight.priorityBySubmission) {
+      for (const [id, theme] of Object.entries(insight.priorityBySubmission)) {
+        if (scopedIds.has(id)) scopedPriority[id] = theme;
+      }
+    }
+    const scopedBlocker: Record<string, string> = {};
+    if (insight.blockerBySubmission) {
+      for (const [id, theme] of Object.entries(insight.blockerBySubmission)) {
+        if (scopedIds.has(id)) scopedBlocker[id] = theme;
+      }
+    }
+
+    // Re-aggregate themes from the filtered maps
+    const pCounts: Record<string, number> = {};
+    Object.values(scopedPriority).forEach((t) => { pCounts[t] = (pCounts[t] ?? 0) + 1; });
+    const priorityThemes = Object.entries(pCounts)
+      .map(([theme, count]) => ({ theme, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const bCounts: Record<string, number> = {};
+    Object.values(scopedBlocker).forEach((t) => { bCounts[t] = (bCounts[t] ?? 0) + 1; });
+    const blockerThemes = Object.entries(bCounts)
+      .map(([theme, count]) => ({ theme, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Recompute compliance metrics from the scoped roster
+    const expected = roster.length;
+    const received = weekSubs.length;
+    const missing = Math.max(0, expected - received);
+    const complianceRate = expected ? Math.round((received / expected) * 100) : 0;
+
+    // Blocker count from scoped submissions
+    const blockerCount = weekSubs.reduce(
+      (sum, s) => sum + (s.blockers?.length ?? 0),
+      0
+    );
+
+    return {
+      ...insight,
+      expected,
+      received,
+      missing,
+      complianceRate,
+      blockerCount,
+      topPriorityTheme: priorityThemes[0]?.theme ?? "—",
+      priorityThemes,
+      blockerThemes,
+      priorityBySubmission: scopedPriority,
+      blockerBySubmission: scopedBlocker,
+    };
+  }, [insight, week, submissions, roster, isOrgWide]);
+}
+
+/**
+ * Returns multiple insights scoped to the current viewer's team.
+ * For org-wide viewers, returns the raw insights unchanged.
+ * For sub-managers, filters per-submission theme maps to only their team's
+ * submissions, then re-aggregates the theme counts.
+ */
+export function useScopedInsights(
+  rawInsights: import("./types").WeeklyInsight[]
+): import("./types").WeeklyInsight[] {
+  const { submissions, roster, isOrgWide } = useScope();
+  return useMemo(() => {
+    if (isOrgWide) return rawInsights;
+
+    return rawInsights.map((insight) => {
+      const weekSubs = submissions.filter((s) => s.week === insight.week);
+      const scopedIds = new Set(weekSubs.map((s) => s._id));
+
+      const scopedPriority: Record<string, string> = {};
+      if (insight.priorityBySubmission) {
+        for (const [id, theme] of Object.entries(insight.priorityBySubmission)) {
+          if (scopedIds.has(id)) scopedPriority[id] = theme;
+        }
+      }
+      const scopedBlocker: Record<string, string> = {};
+      if (insight.blockerBySubmission) {
+        for (const [id, theme] of Object.entries(insight.blockerBySubmission)) {
+          if (scopedIds.has(id)) scopedBlocker[id] = theme;
+        }
+      }
+
+      const pCounts: Record<string, number> = {};
+      Object.values(scopedPriority).forEach((t) => { pCounts[t] = (pCounts[t] ?? 0) + 1; });
+      const priorityThemes = Object.entries(pCounts)
+        .map(([theme, count]) => ({ theme, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const bCounts: Record<string, number> = {};
+      Object.values(scopedBlocker).forEach((t) => { bCounts[t] = (bCounts[t] ?? 0) + 1; });
+      const blockerThemes = Object.entries(bCounts)
+        .map(([theme, count]) => ({ theme, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const expected = roster.length;
+      const received = weekSubs.length;
+      const missing = Math.max(0, expected - received);
+      const complianceRate = expected ? Math.round((received / expected) * 100) : 0;
+      const blockerCount = weekSubs.reduce(
+        (sum, s) => sum + (s.blockers?.length ?? 0),
+        0
+      );
+
+      return {
+        ...insight,
+        expected,
+        received,
+        missing,
+        complianceRate,
+        blockerCount,
+        topPriorityTheme: priorityThemes[0]?.theme ?? "—",
+        priorityThemes,
+        blockerThemes,
+        priorityBySubmission: scopedPriority,
+        blockerBySubmission: scopedBlocker,
+      };
+    });
+  }, [rawInsights, submissions, roster, isOrgWide]);
+}
+
 /** Departments and team leads present in the roster (derived facets for filters). */
 export function useFacets(): { departments: string[]; teamLeads: string[] } {
   const people = useStore((s) => s.people);
