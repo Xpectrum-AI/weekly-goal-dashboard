@@ -187,13 +187,16 @@ function isoWeekFromDate(date: string): string {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return "2026-W01";
   
-  // Calculate ISO week number
+  // Calculate Sunday–Saturday week number
   const year = d.getFullYear();
-  const dayNum = d.getDay() || 7;
-  const dt = new Date(d);
-  dt.setDate(dt.getDate() + 4 - dayNum);
-  const yearStart = new Date(dt.getFullYear(), 0, 1);
-  const weekNo = Math.ceil(((dt.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  const day = d.getDay(); // 0 = Sun … 6 = Sat
+  const sunday = new Date(d);
+  sunday.setDate(sunday.getDate() - day); // rewind to Sunday
+  const jan1 = new Date(sunday.getFullYear(), 0, 1);
+  const jan1Day = jan1.getDay();
+  const firstSunday = new Date(jan1);
+  firstSunday.setDate(jan1.getDate() + ((7 - jan1Day) % 7));
+  const weekNo = Math.floor((sunday.getTime() - firstSunday.getTime()) / (7 * 86400000)) + 1;
   return `${year}-W${String(weekNo).padStart(2, "0")}`;
 }
 function bump(d: string): string {

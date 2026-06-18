@@ -68,16 +68,22 @@ export function weekNum(week: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-/** Get the current ISO week string e.g. "2026-W24" */
+/** Get the current week string e.g. "2026-W25" (weeks run Sunday–Saturday) */
 export function getCurrentWeek(): string {
   const now = new Date();
   const year = now.getFullYear();
-  // Calculate ISO week number
+  // Shift so Sunday is day 0 of the current week (no change needed — getDay()
+  // already treats Sunday as 0). Find the Sunday that starts this week.
   const d = new Date(Date.UTC(year, now.getMonth(), now.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  const day = d.getUTCDay(); // 0 = Sun … 6 = Sat
+  d.setUTCDate(d.getUTCDate() - day); // rewind to Sunday
+  // Week 1 starts on the first Sunday of the year (or Jan 1 if it's a Sunday).
+  const jan1 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const jan1Day = jan1.getUTCDay();
+  const firstSunday = new Date(jan1);
+  firstSunday.setUTCDate(jan1.getUTCDate() + ((7 - jan1Day) % 7));
+  // If Jan 1 is Sun, firstSunday is Jan 1 itself.
+  const weekNo = Math.floor((d.getTime() - firstSunday.getTime()) / (7 * 86400000)) + 1;
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
