@@ -53,7 +53,7 @@ interface StoreState {
   // people
   addPerson: (p: Omit<Person, "_id">) => Promise<void>;
   invitePerson: (p: Omit<Person, "_id">) => Promise<Person | null>;
-  resendInvite: (employeeId: string) => Promise<void>;
+  resendInvite: (employeeId: string, opts?: { createAccount?: boolean }) => Promise<{ ok?: boolean; code?: string } | null>;
   setPersonActive: (employeeId: string, active: boolean) => Promise<void>;
   updatePerson: (id: string, patch: Partial<Person>, opts?: { invite?: boolean }) => Promise<void>;
   deletePerson: (id: string) => Promise<void>;
@@ -182,16 +182,26 @@ export const useStore = create<StoreState>((set, get) => ({
       return null;
     }
   },
-  resendInvite: async (employeeId) => {
+  resendInvite: async (employeeId, opts) => {
     try {
-      const res = await api.resendInvite(employeeId);
+      const res = await api.resendInvite(employeeId, opts);
+      // If no account exists and we didn't ask to create one, return the code
+      // so the caller can prompt the user.
+      if ((res as { code?: string }).code === "NO_ACCOUNT") {
+        return { code: "NO_ACCOUNT" };
+      }
       get().pushToast((res as { message?: string }).message ?? "Invite re-sent");
-      // The account may have just been linked (authUserId backfilled); refresh
-      // so the people list reflects it.
-      if ((res as { linked?: boolean }).linked) get().reload();
+      // The account may have just been linked/created; refresh.
+      if ((res as { linked?: boolean; created?: boolean }).linked || (res as { created?: boolean }).created) get().reload();
+      return { ok: true };
     } catch (e) {
       const msg = e instanceof Error && e.message ? e.message : "Could not resend invite";
+      // Check if the error message contains the NO_ACCOUNT code (from 409)
+      if (msg.includes("No sign-in account exists")) {
+        return { code: "NO_ACCOUNT" };
+      }
       get().pushToast(msg, "error");
+      return null;
     }
   },
   setPersonActive: async (id, active) => {

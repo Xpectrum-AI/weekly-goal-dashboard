@@ -60,6 +60,9 @@ export default function PeoplePage() {
   const [nudgePerson, setNudgePerson] = useState<{ name: string; phone: string } | null>(null);
   const [nudgeState, setNudgeState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
+  // "Create account" confirmation when resending invite for a person with no auth account.
+  const [createAccountTarget, setCreateAccountTarget] = useState<Person | null>(null);
+
   // Merge the org roster (people) with the actual submitters so consistency is
   // real for those who report, while managers who don't submit are flagged.
   const rows = useMemo(() => {
@@ -148,9 +151,24 @@ export default function PeoplePage() {
       reports.forEach((report) => addPersonAndReports(report, level + 1));
     };
 
-    // Start with top-level people (no manager or Leadership dept)
-    const topLevel = entries.filter((e) => !e.teamLead || e.department === 'Leadership');
+    // Start with top-level people. When viewing as a scoped user (not org-wide),
+    // the viewer is the root of the tree even if they have a teamLead above them.
+    const topLevel = isOrgWide
+      ? entries.filter((e) => !e.teamLead || e.department === 'Leadership')
+      : entries.filter((e) => {
+          // The viewer themselves is top-level in a scoped view
+          if (viewer && norm(e.name) === norm(viewer.name)) return true;
+          // Anyone whose manager isn't in the visible set is also top-level
+          if (!e.teamLead) return true;
+          const leadKey = norm(e.teamLead.split('/')[0]);
+          return !entries.some((other) => norm(other.name) === leadKey);
+        });
     topLevel.sort((a, b) => {
+      // Viewer first in scoped view
+      if (viewer) {
+        if (norm(a.name) === norm(viewer.name)) return -1;
+        if (norm(b.name) === norm(viewer.name)) return 1;
+      }
       if (a.department === 'Leadership' && b.department !== 'Leadership') return -1;
       if (b.department === 'Leadership' && a.department !== 'Leadership') return 1;
       return b.reports - a.reports;
@@ -254,6 +272,17 @@ export default function PeoplePage() {
 
   // Build the 3-dot row menu for a given person. Resend/deactivate are scoped
   // server-side to people the caller can manage; failures surface as toasts.
+  async function handleResendInvite(person: Person) {
+    const result = await resendInvite(person._id);
+    if (result?.code === "NO_ACCOUNT") {
+      setCreateAccountTarget(person);
+    }
+  }
+  async function confirmCreateAndInvite() {
+    if (!createAccountTarget) return;
+    await resendInvite(createAccountTarget._id, { createAccount: true });
+    setCreateAccountTarget(null);
+  }
   function rowMenuItems(person: Person, isTopLevel: boolean): RowMenuItem[] {
     const isInactive = person.active === false;
     return [
@@ -262,7 +291,7 @@ export default function PeoplePage() {
         label: "Resend invite",
         icon: Mail,
         hidden: !person.email,
-        onSelect: () => resendInvite(person._id),
+        onSelect: () => handleResendInvite(person),
       },
       isInactive
         ? {
@@ -702,6 +731,24 @@ export default function PeoplePage() {
             )}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={!!createAccountTarget}
+        onClose={() => setCreateAccountTarget(null)}
+        title="Create sign-in account?"
+        subtitle={`No account exists for ${createAccountTarget?.email}`}
+        size="sm"
+        footer={
+          <>
+            <button className="btn-outline" onClick={() => setCreateAccountTarget(null)}>Cancel</button>
+            <button className="btn-primary" onClick={confirmCreateAndInvite}>Create account & send invite</button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-600">
+          This person was saved without creating a sign-in account. Would you like to create one now and send them an invite email?
+        </p>
       </Modal>
     </div>
   );

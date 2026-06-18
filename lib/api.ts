@@ -125,8 +125,8 @@ export const api = {
     req<{ ok: boolean }>("/api/auth/deactivate", { method: "POST", body: JSON.stringify({ employeeId, disableAuth }) }),
   reactivateEmployee: (employeeId: string, email?: string) =>
     req<{ ok: boolean }>("/api/auth/reactivate", { method: "POST", body: JSON.stringify({ employeeId, ...(email ? { email } : {}) }) }),
-  resendInvite: (employeeId: string) =>
-    req<{ ok: boolean }>("/api/auth/resend-invite", { method: "POST", body: JSON.stringify({ employeeId }) }),
+  resendInvite: (employeeId: string, opts?: { createAccount?: boolean }) =>
+    req<{ ok: boolean; code?: string; created?: boolean }>("/api/auth/resend-invite", { method: "POST", body: JSON.stringify({ employeeId, ...opts }) }),
   checkAuthEmail: (email: string) =>
     req<{ exists: boolean }>(`/api/auth/check-email?email=${encodeURIComponent(email)}`),
 };

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth-middleware";
 import { canManagePerson } from "@/lib/permissions";
-import { resendInviteEmail, resolveAuthUserId } from "@/lib/auth";
+import { resendInviteEmail, resolveAuthUserId, inviteUser } from "@/lib/auth";
 import { getDb, COLLECTIONS } from "@/lib/mongodb";
 
 export const runtime = "nodejs";
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
   if (ctx instanceof NextResponse) return ctx;
 
   const body = await request.json();
-  const { employeeId } = body;
+  const { employeeId, createAccount } = body;
 
   if (!employeeId) {
     return NextResponse.json(
@@ -65,6 +65,33 @@ export async function POST(request: Request) {
       await db
         .collection(COLLECTIONS.people)
         .updateOne({ _id: target._id as any }, { $set: { authUserId } });
+    }
+  }
+
+  // No auth account exists yet. If the caller didn't explicitly request account
+  // creation, respond with a specific code so the frontend can confirm.
+  if (!authUserId && !createAccount) {
+    return NextResponse.json(
+      { error: "No sign-in account exists for this email yet.", code: "NO_ACCOUNT" },
+      { status: 409 }
+    );
+  }
+
+  // Caller confirmed: create the PropelAuth account now.
+  if (!authUserId && createAccount) {
+    try {
+      authUserId = await inviteUser(target.email, target.name);
+      const db = await getDb();
+      await db
+        .collection(COLLECTIONS.people)
+        .updateOne({ _id: target._id as any }, { $set: { authUserId } });
+      return NextResponse.json({ ok: true, created: true, email: target.email, message: "Account created and invite sent." });
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      return NextResponse.json(
+        { error: `Could not create the sign-in account: ${raw}` },
+        { status: 500 }
+      );
     }
   }
 
