@@ -55,7 +55,7 @@ interface StoreState {
   invitePerson: (p: Omit<Person, "_id">) => Promise<Person | null>;
   resendInvite: (employeeId: string) => Promise<void>;
   setPersonActive: (employeeId: string, active: boolean) => Promise<void>;
-  updatePerson: (id: string, patch: Partial<Person>) => Promise<void>;
+  updatePerson: (id: string, patch: Partial<Person>, opts?: { invite?: boolean }) => Promise<void>;
   deletePerson: (id: string) => Promise<void>;
   bulkAddPeople: (rows: Omit<Person, "_id">[]) => Promise<void>;
 
@@ -208,13 +208,16 @@ export const useStore = create<StoreState>((set, get) => ({
       get().pushToast(msg, "error");
     }
   },
-  updatePerson: async (id, patch) => {
+  updatePerson: async (id, patch, opts) => {
     try {
-      const doc = await api.updatePerson(id, patch);
+      const doc = await api.updatePerson(id, patch, opts);
       set((st) => ({ people: st.people.map((x) => (x._id === id ? doc : x)) }));
-      get().pushToast("Person updated");
-    } catch {
-      get().pushToast("Update failed", "error");
+      // The account link may have just been created/backfilled — refresh so the
+      // list reflects it.
+      get().pushToast(opts?.invite ? "Person updated · invite sent" : "Person updated");
+    } catch (e) {
+      const msg = e instanceof Error && e.message ? e.message : "Update failed";
+      get().pushToast(msg, "error");
     }
   },
   deletePerson: async (id) => {

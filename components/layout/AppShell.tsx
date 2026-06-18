@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const load = useStore((s) => s.load);
   const reload = useStore((s) => s.reload);
   const error = useStore((s) => s.error);
-  const { isLoading, isAuthenticated, accessToken, employee } = useAuth();
+  const { isLoading, isAuthenticated, accessDenied, accessToken, employee, logout } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -45,6 +45,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
           <p className="text-sm text-slate-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Authenticated with PropelAuth, but the server rejected them (account
+  // deactivated / no employee record). Show a clear message instead of the
+  // empty app shell with an "Organization-wide" fallback persona.
+  if (accessDenied) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="max-w-sm text-center">
+          <h2 className="text-lg font-semibold text-slate-800">No access</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Your account no longer has access to this dashboard. If you think
+            this is a mistake, contact your admin.
+          </p>
+          <button
+            onClick={() => logout()}
+            className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     );

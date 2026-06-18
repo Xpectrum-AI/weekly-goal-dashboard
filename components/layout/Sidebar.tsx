@@ -83,13 +83,6 @@ export function Sidebar({ mobileOpen, onClose }: { mobileOpen: boolean; onClose:
             })}
           </div>
         </nav>
-
-        <div className="border-t border-ink-100 p-3">
-          <div className="rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-4 text-white">
-            <p className="text-xs font-semibold">Leadership console</p>
-            <p className="mt-0.5 text-[11px] text-emerald-100">Grounded in weekly WhatsApp data</p>
-          </div>
-        </div>
       </aside>
     </>
   );

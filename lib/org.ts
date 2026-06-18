@@ -211,12 +211,117 @@ export function missingSubmitters(
   return roster.filter((r) => !submitted.has(norm(r.name)));
 }
 
+export interface RecurringBlocker {
+  name: string;
+  department: string;
+  teamLead: string;
+  text: string;      // representative text of the recurring blocker
+  weeks: string[];   // distinct weeks the blocker appeared in, sorted
+  span: number;      // weeks.length (how many distinct weeks it persisted)
+}
+
 export interface RepeatBlocker {
   name: string;
   department: string;
   teamLead: string;
   total: number;
   weeks: string[];
+}
+
+// Reduce a free-text blocker to a comparable token set: lowercase, strip
+// punctuation, drop very common filler words, collapse whitespace.
+const BLOCKER_STOPWORDS = new Set([
+  "the", "a", "an", "to", "of", "for", "and", "or", "is", "are", "was", "were",
+  "on", "in", "at", "by", "with", "we", "i", "my", "our", "this", "that", "it",
+  "from", "as", "be", "still", "yet", "blocked", "blocker", "issue",
+]);
+
+function blockerTokens(text: string): Set<string> {
+  return new Set(
+    norm(text)
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2 && !BLOCKER_STOPWORDS.has(w))
+  );
+}
+
+// Jaccard similarity between two token sets (0..1).
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+// Two blockers are "the same" when their token sets overlap enough. 0.5 means
+// roughly half the meaningful words match — tolerant of small rewordings while
+// still separating genuinely different blockers.
+const SAME_BLOCKER_THRESHOLD = 0.5;
+
+/** Whether two free-text blockers describe the same thing (see threshold). */
+export function sameBlocker(a: string, b: string): boolean {
+  return jaccard(blockerTokens(a), blockerTokens(b)) >= SAME_BLOCKER_THRESHOLD;
+}
+
+interface BlockerCluster {
+  text: string;          // representative (first-seen) text
+  tokens: Set<string>;
+  weeks: Set<string>;
+}
+
+/**
+ * Recurring blockers: the SAME blocker reported by a person across 2+ distinct
+ * weeks (i.e. it was never resolved). Free-text blockers are clustered per
+ * person by token-set similarity; a cluster spanning ≥2 weeks is "recurring".
+ * One returned row per recurring blocker, most-persistent first.
+ */
+export function recurringBlockers(subs: WeeklySubmission[]): RecurringBlocker[] {
+  // Per person: greedily cluster their blocker texts across all weeks.
+  const byPerson = new Map<
+    string,
+    { name: string; department: string; teamLead: string; clusters: BlockerCluster[] }
+  >();
+
+  subs.forEach((s) => {
+    if (s.blockers.length === 0) return;
+    const k = norm(s.personName);
+    if (!byPerson.has(k)) {
+      byPerson.set(k, { name: s.personName, department: s.department, teamLead: s.teamLead, clusters: [] });
+    }
+    const entry = byPerson.get(k)!;
+    s.blockers.forEach((raw) => {
+      const tokens = blockerTokens(raw);
+      if (tokens.size === 0) return; // nothing meaningful to match on
+      // Attach to the best-matching existing cluster, else start a new one.
+      let best: BlockerCluster | null = null;
+      let bestSim = 0;
+      for (const c of entry.clusters) {
+        const sim = jaccard(tokens, c.tokens);
+        if (sim > bestSim) { bestSim = sim; best = c; }
+      }
+      if (best && bestSim >= SAME_BLOCKER_THRESHOLD) {
+        best.weeks.add(s.week);
+      } else {
+        entry.clusters.push({ text: raw.trim(), tokens, weeks: new Set([s.week]) });
+      }
+    });
+  });
+
+  const out: RecurringBlocker[] = [];
+  for (const p of byPerson.values()) {
+    for (const c of p.clusters) {
+      if (c.weeks.size < 2) continue; // appeared in only one week → not recurring
+      out.push({
+        name: p.name,
+        department: p.department,
+        teamLead: p.teamLead,
+        text: c.text,
+        weeks: [...c.weeks].sort(),
+        span: c.weeks.size,
+      });
+    }
+  }
+  return out.sort((a, b) => b.span - a.span);
 }
 
 /** Submitters who reported blockers in 2+ distinct weeks (by name). */

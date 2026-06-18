@@ -13,6 +13,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { PersonForm, emptyPerson, type PersonDraft } from "@/components/forms/PersonForm";
 import { useStore } from "@/lib/store";
+import { api } from "@/lib/api";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
 import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission, computeLevel } from "@/lib/org";
@@ -43,6 +44,16 @@ export default function PeoplePage() {
   const [editing, setEditing] = useState<Person | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<Person | null>(null);
+  // Email-change confirmation: gate account creation / invite emails behind an
+  // explicit step instead of firing them as a side-effect of saving.
+  const [inviteModal, setInviteModal] = useState<{
+    id: string;
+    cleaned: PersonDraft;
+    level: number;
+    email: string;
+    exists: boolean;
+    phoneChanged: boolean;
+  } | null>(null);
 
   // Post-save reminder: when a saved person is still pending this week, offer to
   // send them the WhatsApp alignment nudge.
@@ -173,23 +184,47 @@ export default function PeoplePage() {
     // level from the chosen team lead (level 1 = top, each step down adds one).
     const level = computeLevel(draft.teamLead ?? null, people);
     const cleaned = { ...draft, phone: normalizePhone(draft.phone), level };
+    // New person: every field is "new", so the nudge is eligible. For edits, the
+    // nudge only fires when the phone number actually changed.
+    let phoneChanged = true;
     if (editing) {
-      updatePerson(editing._id, cleaned);
+      const newEmail = (cleaned.email ?? "").trim();
+      const oldEmail = (editing.email ?? "").trim();
+      const emailChanged = newEmail.toLowerCase() !== oldEmail.toLowerCase();
+      phoneChanged = normalizePhone(editing.phone ?? "") !== cleaned.phone;
+      // Changing/adding an email no longer silently creates a sign-in account.
+      // Ask first, warning if an account already exists for that address.
+      if (emailChanged && newEmail) {
+        let exists = false;
+        try {
+          exists = (await api.checkAuthEmail(newEmail)).exists;
+        } catch {
+          /* non-fatal — assume unknown, modal still lets them proceed */
+        }
+        setInviteModal({ id: editing._id, cleaned, level, email: newEmail, exists, phoneChanged });
+        return; // the modal drives updatePerson + the post-save flow
+      }
+      await updatePerson(editing._id, cleaned);
     } else {
       // New person: create the employee record AND send a PropelAuth invite
       // email so they can sign in. Abort the post-save flow if it failed.
       const created = await invitePerson(cleaned);
       if (!created) return;
     }
+    finishSave(cleaned, level, phoneChanged);
+  }
+
+  // Close the edit dialog and, when the phone number is new/changed and the
+  // person still owes a submission this week, offer to send the WhatsApp nudge.
+  function finishSave(cleaned: PersonDraft, level: number, phoneChanged: boolean) {
     setDraft(null);
     setEditing(null);
 
-    // Is this person still pending their update for the current week?
     const expected = expectsSubmission({ ...cleaned, level } as Person);
     const submittedThisWeek = submissions.some(
       (s) => norm(s.personName) === norm(cleaned.name) && s.week === currentWeek
     );
-    if (expected && !submittedThisWeek && cleaned.phone) {
+    if (phoneChanged && expected && !submittedThisWeek && cleaned.phone) {
       setNudgeState("idle");
       // Defer so the edit dialog finishes closing and the touch's synthesized
       // "ghost click" doesn't land on this dialog's backdrop (mobile), which
@@ -197,6 +232,16 @@ export default function PeoplePage() {
       const next = { name: cleaned.name, phone: cleaned.phone };
       setTimeout(() => setNudgePerson(next), 350);
     }
+  }
+
+  // Resolve the email-change modal: save the record, optionally sending the
+  // invite (create account + email a confirm/set-password link).
+  async function resolveEmailChange(sendInvite: boolean) {
+    if (!inviteModal) return;
+    const { id, cleaned, level, phoneChanged } = inviteModal;
+    setInviteModal(null);
+    await updatePerson(id, cleaned, { invite: sendInvite });
+    finishSave(cleaned, level, phoneChanged);
   }
 
   async function handleSendNudge() {
@@ -583,6 +628,38 @@ export default function PeoplePage() {
         message={`${deactivateTarget?.name ?? "This person"} will lose dashboard access and their login will be disabled. Their history and reporting structure remain. You can reactivate them anytime.`}
         confirmLabel="Deactivate"
       />
+
+      <Modal
+        open={!!inviteModal}
+        onClose={() => setInviteModal(null)}
+        title="Set up sign-in account?"
+        subtitle={inviteModal ? `New email: ${inviteModal.email}` : undefined}
+        size="sm"
+        footer={
+          <>
+            <button className="btn-ghost" onClick={() => setInviteModal(null)}>
+              Cancel
+            </button>
+            <button className="btn-outline" onClick={() => resolveEmailChange(false)}>
+              Save without inviting
+            </button>
+            <button className="btn-primary" onClick={() => resolveEmailChange(true)}>
+              {inviteModal?.exists ? "Link & re-send invite" : "Create account & invite"}
+            </button>
+          </>
+        }
+      >
+        {inviteModal?.exists ? (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            An account already exists for this email. Inviting will link to it and re-send
+            the sign-in link.
+          </p>
+        ) : (
+          <p className="text-sm text-ink-600">
+            Sends an email with a link to set a password and sign in.
+          </p>
+        )}
+      </Modal>
 
       <Modal
         open={!!nudgePerson}

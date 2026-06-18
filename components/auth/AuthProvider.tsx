@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import {
   AuthProvider as PropelAuthProvider,
   useUser,
@@ -8,7 +8,7 @@ import {
   useRedirectFunctions,
 } from "@propelauth/nextjs/client";
 import type { Person } from "@/lib/types";
-import { setApiToken } from "@/lib/api";
+import { setApiToken, setAuthFailureHandler } from "@/lib/api";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Authentication context for the frontend.
@@ -119,6 +119,22 @@ function AuthInner({ children }: { children: ReactNode }) {
     setAccessDenied(false);
     setApiToken(null);
   }, [logout]);
+
+  // If the server rejects the session mid-use (token expired, or access revoked
+  // because the account was deactivated/unlinked while the user was working),
+  // sign out and send them back to login. Guarded so it only fires once.
+  const handlingFailureRef = useRef(false);
+  useEffect(() => {
+    setAuthFailureHandler((reason) => {
+      if (handlingFailureRef.current) return;
+      handlingFailureRef.current = true;
+      console.warn(`[auth] session ${reason} — returning to login`);
+      handleLogout()
+        .catch(() => {})
+        .finally(() => redirectToLoginPage());
+    });
+    return () => setAuthFailureHandler(null);
+  }, [handleLogout, redirectToLoginPage]);
 
   return (
     <AuthContext.Provider

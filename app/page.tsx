@@ -54,7 +54,7 @@ export default function OverviewPage() {
       const response = await fetch("https://apps-v2-dev.xpectrum-ai.com/v1/workflows/run", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer app-6486IPF8NNEATQ7mXGUr9det",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_DIFY_INSIGHTS_TOKEN}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ export default function OverviewPage() {
       const response = await fetch("https://apps-v2-dev.xpectrum-ai.com/v1/workflows/run", {
         method: "POST",
         headers: {
-          "Authorization": "Bearer app-48KCeoZ491YOqaOHEBZTLzJ8",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_DIFY_SYNC_TOKEN}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -342,7 +342,7 @@ export default function OverviewPage() {
                 {recent.map((s) => (
                   <li key={s._id}>
                     <Link
-                      href={`/submissions?person=${encodeURIComponent(s.personName)}`}
+                      href={`/submissions?person=${encodeURIComponent(s.personName)}&week=${s.week}`}
                       className="flex items-center gap-3 px-5 py-3 transition hover:bg-ink-50/60"
                     >
                       <Avatar name={s.personName} size="sm" />

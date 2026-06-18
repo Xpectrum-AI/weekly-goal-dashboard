@@ -15,6 +15,18 @@ export function getApiToken(): string | null {
   return _accessToken;
 }
 
+// ─── Auth-failure handler ────────────────────────────────────────────────────
+// Registered by AuthProvider. Fires when the server rejects the session itself
+// (token no longer valid, or access revoked server-side) so the app can send the
+// user back to login. NOT fired for ordinary permission denials (e.g. trying to
+// edit someone you don't manage) — those stay as normal errors.
+export type AuthFailureReason = "unauthorized" | "revoked";
+let _onAuthFailure: ((reason: AuthFailureReason) => void) | null = null;
+
+export function setAuthFailureHandler(fn: ((reason: AuthFailureReason) => void) | null) {
+  _onAuthFailure = fn;
+}
+
 async function req<T>(url: string, opts?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -32,14 +44,21 @@ async function req<T>(url: string, opts?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     let msg = res.statusText;
+    let errText = "";
     try {
-      msg = (await res.json()).error ?? msg;
+      errText = (await res.json()).error ?? "";
+      if (errText) msg = errText;
     } catch {
       /* ignore */
     }
-    // If unauthorized, could trigger re-auth
+    // The session itself is no longer valid → bounce to login.
     if (res.status === 401) {
+      _onAuthFailure?.("unauthorized");
       msg = "Session expired. Please log in again.";
+    } else if (res.status === 403 && /deactivated|no employee record/i.test(errText)) {
+      // Access was revoked while the user was active (deactivated / unlinked).
+      // Distinct from a plain permission denial, which keeps showing as an error.
+      _onAuthFailure?.("revoked");
     }
     throw new Error(msg);
   }
@@ -51,7 +70,11 @@ export const api = {
   listPeople: () => req<Person[]>("/api/people"),
   createPerson: (p: Omit<Person, "_id">) => req<Person>("/api/people", { method: "POST", body: JSON.stringify(p) }),
   bulkPeople: (rows: Omit<Person, "_id">[]) => req<Person[]>("/api/people", { method: "POST", body: JSON.stringify(rows) }),
-  updatePerson: (id: string, patch: Partial<Person>) => req<Person>(`/api/people/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  updatePerson: (id: string, patch: Partial<Person>, opts?: { invite?: boolean }) =>
+    req<Person>(`/api/people/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ ...patch, ...(opts?.invite ? { invite: true } : {}) }),
+    }),
   deletePerson: (id: string) => req<{ ok: boolean }>(`/api/people/${id}`, { method: "DELETE" }),
 
   // submissions
@@ -100,8 +123,10 @@ export const api = {
     req<Person>("/api/auth/invite", { method: "POST", body: JSON.stringify(data) }),
   deactivateEmployee: (employeeId: string, disableAuth = true) =>
     req<{ ok: boolean }>("/api/auth/deactivate", { method: "POST", body: JSON.stringify({ employeeId, disableAuth }) }),
-  reactivateEmployee: (employeeId: string) =>
-    req<{ ok: boolean }>("/api/auth/reactivate", { method: "POST", body: JSON.stringify({ employeeId }) }),
+  reactivateEmployee: (employeeId: string, email?: string) =>
+    req<{ ok: boolean }>("/api/auth/reactivate", { method: "POST", body: JSON.stringify({ employeeId, ...(email ? { email } : {}) }) }),
   resendInvite: (employeeId: string) =>
     req<{ ok: boolean }>("/api/auth/resend-invite", { method: "POST", body: JSON.stringify({ employeeId }) }),
+  checkAuthEmail: (email: string) =>
+    req<{ exists: boolean }>(`/api/auth/check-email?email=${encodeURIComponent(email)}`),
 };

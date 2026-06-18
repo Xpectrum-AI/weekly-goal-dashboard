@@ -74,13 +74,39 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
   // 2. Determine super-admin status from PropelAuth (authoritative, server-side).
   const superAdmin = await isSuperAdmin(authUser.userId);
 
-  // 3. Find employee in MongoDB by email (case-insensitive). The email comes
-  // from the verified PropelAuth token, so it cannot be forged. We match on
-  // email rather than authUserId so records don't need to be pre-linked.
+  // 3. Find employee in MongoDB. We key on `authUserId` — PropelAuth's immutable
+  // user id — rather than email. Email can be changed or reused for a different
+  // person, which makes it unsafe as an identity key; authUserId never changes
+  // and is unique per account.
   const db = await getDb();
-  const employee = await db.collection(COLLECTIONS.people).findOne({
-    email: { $regex: `^${escapeRegex(authUser.email)}$`, $options: "i" },
-  });
+  const peopleCol = db.collection(COLLECTIONS.people);
+
+  // Primary lookup: the verified, unforgeable PropelAuth user id.
+  let employee = (await peopleCol.findOne({
+    authUserId: authUser.userId,
+  })) as Person | null;
+
+  // First-login bind: a record created before this user ever logged in has no
+  // authUserId yet. Claim an *unbound*, *active* record whose email matches the
+  // token (case-insensitive) and stamp the authUserId permanently. After this,
+  // the record is matched by id and email becomes display-only.
+  //   - `authUserId: { $exists: false }` → never steal an already-linked record.
+  //   - `active: { $ne: false }` → a deactivated record (authUserId unset) can
+  //     never be re-claimed via a reused email.
+  if (!employee) {
+    const unbound = (await peopleCol.findOne({
+      authUserId: { $exists: false },
+      active: { $ne: false },
+      email: { $regex: `^${escapeRegex(authUser.email)}$`, $options: "i" },
+    })) as Person | null;
+    if (unbound) {
+      await peopleCol.updateOne(
+        { _id: unbound._id as any },
+        { $set: { authUserId: authUser.userId } }
+      );
+      employee = { ...unbound, authUserId: authUser.userId };
+    }
+  }
 
   // Load all people for hierarchy checks (also used by super-admin context).
   const allPeople = (await db
@@ -90,7 +116,8 @@ export async function requireAuth(request: Request): Promise<AuthResult> {
 
   if (!employee) {
     console.error(
-      `[auth] no people record matching email=${authUser.email} (userId=${authUser.userId})`
+      `[auth] no people record for userId=${authUser.userId} (email=${authUser.email}) — ` +
+        `not linked by authUserId and no unbound record matched the email`
     );
     // Super-admins are allowed in without a MongoDB record — treated as level 1.
     if (superAdmin) {

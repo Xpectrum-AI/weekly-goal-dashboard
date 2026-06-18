@@ -31,6 +31,12 @@ export interface Person {
   level?: number;
   /** Email address (required for authentication). */
   email?: string;
+  /**
+   * Email stashed while the person is deactivated. The visible `email` is
+   * cleared on deactivate (so no new signup can match this record) and restored
+   * from here on reactivate.
+   */
+  formerEmail?: string;
   /** PropelAuth user ID — links this employee to their auth account. */
   authUserId?: string;
 }

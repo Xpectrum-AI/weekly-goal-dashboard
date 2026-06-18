@@ -41,6 +41,24 @@ export async function POST(req: Request) {
     const db = await getDb();
     const body = await req.json();
     const rows = Array.isArray(body) ? body : [body];
+
+    // Enforce email uniqueness — login matches employees by email, so two
+    // people sharing one email would make sign-in ambiguous. Check both against
+    // existing people and for duplicates within this batch.
+    const seen = new Set<string>();
+    for (const r of rows) {
+      const email = typeof r.email === "string" ? r.email.trim().toLowerCase() : "";
+      if (!email) continue;
+      const taken = ctx.allPeople.find((p) => p.email && p.email.toLowerCase() === email);
+      if (taken || seen.has(email)) {
+        return NextResponse.json(
+          { error: `The email "${r.email.trim()}" is already in use${taken ? ` by ${taken.name}` : ""}.` },
+          { status: 409 }
+        );
+      }
+      seen.add(email);
+    }
+
     const docs = rows.map((r) => ({ ...r, _id: r._id ?? uid("p") }));
     if (docs.length) await db.collection(COLLECTIONS.people).insertMany(docs as any[]);
     return NextResponse.json(Array.isArray(body) ? docs : docs[0]);

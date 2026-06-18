@@ -49,14 +49,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1. Create user in PropelAuth (sends invite email). If an account already
-  // exists for this email, that's fine — login matches by email, so we just
-  // proceed to create the employee record.
+  // 1. Create user in PropelAuth (sends invite email) and capture the immutable
+  // PropelAuth user id — this is what links the account to the employee record.
+  // If an account already exists for this email, reuse its id.
+  let authUserId: string | undefined;
   try {
-    await inviteUser(email, name);
+    authUserId = await inviteUser(email, name);
   } catch {
-    const existing = await resolveAuthUserId(email);
-    if (!existing) {
+    authUserId = (await resolveAuthUserId(email)) ?? undefined;
+    if (!authUserId) {
       return NextResponse.json(
         { error: "Could not create the sign-in account. Please verify the email and try again." },
         { status: 500 }
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
     level: Number(level),
     joinedAt: new Date().toISOString().slice(0, 10),
     avatarColor: PALETTE[Math.floor(Math.random() * PALETTE.length)],
+    ...(authUserId ? { authUserId } : {}),
   };
 
   await db.collection(COLLECTIONS.people).insertOne(employeeDoc as any);

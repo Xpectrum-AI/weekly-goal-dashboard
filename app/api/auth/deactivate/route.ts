@@ -46,23 +46,29 @@ export async function POST(request: Request) {
     );
   }
 
-  // Delete the user from PropelAuth (resolve the user id from their email).
-  if (target.email) {
-    try {
-      const authUserId = await resolveAuthUserId(target.email);
-      if (authUserId) await deleteUser(authUserId);
-    } catch (e: any) {
-      // Non-fatal: employee is still deactivated in our system
-      console.error("Failed to delete PropelAuth account:", e.message);
-    }
+  // Delete the user from PropelAuth. Prefer the stored authUserId (the canonical
+  // link); fall back to resolving by email for legacy records that predate it.
+  try {
+    const authUserId =
+      target.authUserId ?? (target.email ? await resolveAuthUserId(target.email) : null);
+    if (authUserId) await deleteUser(authUserId);
+  } catch (e: any) {
+    // Non-fatal: employee is still deactivated in our system
+    console.error("Failed to delete PropelAuth account:", e.message);
   }
 
   const db = await getDb();
 
-  // Mark inactive and clear the email so the slot is freed up.
+  // Mark inactive and unset authUserId. Unsetting the link is what blocks access:
+  // the next login can't match by authUserId, and the first-login email bind
+  // skips inactive records — so a reused email can never re-claim this record.
+  // The email is kept for the audit trail (no longer used as an identity key).
   await db.collection(COLLECTIONS.people).updateOne(
     { _id: employeeId as any },
-    { $set: { active: false, email: "" } }
+    {
+      $set: { active: false },
+      $unset: { authUserId: "" },
+    }
   );
 
   return NextResponse.json({ ok: true, employeeId, active: false });
