@@ -51,17 +51,10 @@ export default function OverviewPage() {
     setGeneratingInsights(true);
     setInsightStatus("idle");
     try {
-      const response = await fetch("https://apps-v2-dev.xpectrum-ai.com/v1/workflows/run", {
+      const response = await fetch("/api/generate-insights", {
         method: "POST",
-        headers: {
-          "Authorization": "Bearer app-6486IPF8NNEATQ7mXGUr9det",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: { week: currentWeek },
-          response_mode: "streaming",
-          user: "abc-123",
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ week: currentWeek }),
       });
       if (!response.ok) throw new Error("Failed to generate insights");
       setInsightStatus("success");
@@ -79,18 +72,7 @@ export default function OverviewPage() {
     setSyncing(true);
     setSyncStatus("idle");
     try {
-      const response = await fetch("https://apps-v2-dev.xpectrum-ai.com/v1/workflows/run", {
-        method: "POST",
-        headers: {
-          "Authorization": "Bearer app-48KCeoZ491YOqaOHEBZTLzJ8",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: {},
-          response_mode: "streaming",
-          user: "abc-123",
-        }),
-      });
+      const response = await fetch("/api/sync", { method: "POST" });
       if (!response.ok) throw new Error("Failed to sync");
       setSyncStatus("success");
       setTimeout(() => setSyncStatus("idle"), 3000);
@@ -104,29 +86,29 @@ export default function OverviewPage() {
   };
 
   const thisWeek = submissions.filter((s) => s.week === currentWeek);
-  
+
   // Only use stored insight metrics from MongoDB - no fallback
   const hasStoredInsight = storedInsight && isOrgWide;
-  
+
   const c = hasStoredInsight
     ? {
-        expected: storedInsight.expected,
-        received: storedInsight.received,
-        missing: storedInsight.missing,
-        rate: storedInsight.complianceRate,
-      }
+      expected: storedInsight.expected,
+      received: storedInsight.received,
+      missing: storedInsight.missing,
+      rate: storedInsight.complianceRate,
+    }
     : { expected: 0, received: 0, missing: 0, rate: 0 };
-  
+
   const avgComplete = hasStoredInsight ? storedInsight.avgCompleteness : null;
   const blockerCount = hasStoredInsight ? storedInsight.blockerCount : null;
-  
+
   // Keep the full array for displaying in the UI
   const weakThisWeek = weakSubmissions(thisWeek);
   const weakCount = hasStoredInsight ? storedInsight.weakCount : null;
-  
+
   // Use stored AI-derived priority themes when available (only from MongoDB)
   const pThemes = hasStoredInsight ? storedInsight.priorityThemes : [];
-  
+
   const recent = recentSubmissions(submissions, 7);
   const missing = missingSubmitters(roster, submissions, currentWeek);
 
@@ -144,7 +126,7 @@ export default function OverviewPage() {
       });
   }, [assignedTasks]);
   const urgentCount = openTasks.filter((t) => t.urgency === "urgent" || t.overdue).length;
-  
+
   // Build trend using only stored insights from MongoDB
   const insightByWeek = new Map(allInsights.map((i) => [i.week, i]));
   const trend = weeks.map((w) => {
@@ -182,13 +164,12 @@ export default function OverviewPage() {
                 <button
                   onClick={handleSync}
                   disabled={syncing}
-                  className={`btn-outline w-full justify-center sm:w-auto ${
-                    syncStatus === "success"
-                      ? "!bg-emerald-100 !text-emerald-700 !border-emerald-300"
-                      : syncStatus === "error"
+                  className={`btn-outline w-full justify-center sm:w-auto ${syncStatus === "success"
+                    ? "!bg-emerald-100 !text-emerald-700 !border-emerald-300"
+                    : syncStatus === "error"
                       ? "!bg-rose-100 !text-rose-700 !border-rose-300"
                       : ""
-                  }`}
+                    }`}
                 >
                   {syncing ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -198,10 +179,10 @@ export default function OverviewPage() {
                   {syncing
                     ? "Syncing..."
                     : syncStatus === "success"
-                    ? "Synced!"
-                    : syncStatus === "error"
-                    ? "Failed"
-                    : "Sync"}
+                      ? "Synced!"
+                      : syncStatus === "error"
+                        ? "Failed"
+                        : "Sync"}
                   <Info size={14} className="text-ink-400" />
                 </button>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-ink-800 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 shadow-lg">
@@ -214,13 +195,12 @@ export default function OverviewPage() {
               <button
                 onClick={handleGenerateInsights}
                 disabled={generatingInsights}
-                className={`btn-primary flex-1 justify-center sm:flex-none ${
-                  insightStatus === "success"
-                    ? "!bg-emerald-600"
-                    : insightStatus === "error"
+                className={`btn-primary flex-1 justify-center sm:flex-none ${insightStatus === "success"
+                  ? "!bg-emerald-600"
+                  : insightStatus === "error"
                     ? "!bg-rose-600"
                     : ""
-                }`}
+                  }`}
               >
                 {generatingInsights ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -230,10 +210,10 @@ export default function OverviewPage() {
                 {generatingInsights
                   ? `Generating ${weekLabel(currentWeek)}...`
                   : insightStatus === "success"
-                  ? "Insights Sent!"
-                  : insightStatus === "error"
-                  ? "Failed"
-                  : `Generate Insights (${weekLabel(currentWeek)})`}
+                    ? "Insights Sent!"
+                    : insightStatus === "error"
+                      ? "Failed"
+                      : `Generate Insights (${weekLabel(currentWeek)})`}
               </button>
               <Link
                 href="/submissions"
@@ -251,35 +231,35 @@ export default function OverviewPage() {
           Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[132px]" />)
         ) : (
           <>
-            <KpiCard 
-              label="Submission compliance" 
-              value={hasStoredInsight ? c.rate : "—"} 
-              suffix={hasStoredInsight ? "%" : ""} 
-              icon={MessageCircle} 
-              tone="emerald" 
-              deltaLabel={hasStoredInsight ? `${c.received} of ${c.expected} submitted` : "Generate insights"} 
+            <KpiCard
+              label="Submission compliance"
+              value={hasStoredInsight ? c.rate : "—"}
+              suffix={hasStoredInsight ? "%" : ""}
+              icon={MessageCircle}
+              tone="emerald"
+              deltaLabel={hasStoredInsight ? `${c.received} of ${c.expected} submitted` : "Generate insights"}
             />
-            <KpiCard 
-              label="Missing updates" 
-              value={hasStoredInsight ? c.missing : "—"} 
-              icon={UserX} 
-              tone="amber" 
-              deltaLabel={hasStoredInsight ? `for ${weekLabel(currentWeek)}` : "Generate insights"} 
+            <KpiCard
+              label="Missing updates"
+              value={hasStoredInsight ? c.missing : "—"}
+              icon={UserX}
+              tone="amber"
+              deltaLabel={hasStoredInsight ? `for ${weekLabel(currentWeek)}` : "Generate insights"}
             />
-            <KpiCard 
-              label="Blockers raised" 
-              value={blockerCount !== null ? blockerCount : "—"} 
-              icon={AlertOctagon} 
-              tone="rose" 
-              deltaLabel={blockerCount !== null ? "this week" : "Generate insights"} 
+            <KpiCard
+              label="Blockers raised"
+              value={blockerCount !== null ? blockerCount : "—"}
+              icon={AlertOctagon}
+              tone="rose"
+              deltaLabel={blockerCount !== null ? "this week" : "Generate insights"}
             />
-            <KpiCard 
-              label="Response completeness" 
-              value={avgComplete !== null ? avgComplete : "—"} 
-              suffix={avgComplete !== null ? "%" : ""} 
-              icon={GaugeCircle} 
-              tone="brand" 
-              deltaLabel={avgComplete !== null ? `${weakCount} weak / vague` : "Generate insights"} 
+            <KpiCard
+              label="Response completeness"
+              value={avgComplete !== null ? avgComplete : "—"}
+              suffix={avgComplete !== null ? "%" : ""}
+              icon={GaugeCircle}
+              tone="brand"
+              deltaLabel={avgComplete !== null ? `${weakCount} weak / vague` : "Generate insights"}
             />
           </>
         )}

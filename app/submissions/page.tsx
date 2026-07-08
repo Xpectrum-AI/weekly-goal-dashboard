@@ -26,7 +26,6 @@ import { Modal, ConfirmDialog } from "@/components/ui/Modal";
 import { EmptyState, TableSkeleton } from "@/components/ui/States";
 import { SubmissionForm, emptySubmission, type SubmissionDraft } from "@/components/forms/SubmissionForm";
 import { AssignTaskForm, emptyAssignTask, type AssignTaskDraft } from "@/components/forms/AssignTaskForm";
-import { sendTaskAssigned } from "@/lib/nudge";
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
 import {
@@ -176,11 +175,16 @@ function SubmissionsPageContent() {
     // Notify the assignee on WhatsApp that a priority task was assigned to them.
     const assignee = people.find((p) => p._id === assignDraft.personId);
     if (assignee?.phone) {
-      sendTaskAssigned({
-        phone: assignee.phone,
-        assigneeName: assignDraft.personName,
-        assignerName: assignDraft.assignedBy || "Leadership",
-        priority: assignDraft.text,
+      fetch("/api/nudge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "task-assigned",
+          phone: assignee.phone,
+          assigneeName: assignDraft.personName,
+          assignerName: assignDraft.assignedBy || "Leadership",
+          priority: assignDraft.text,
+        }),
       });
     }
     setAssignDraft(null);
@@ -623,8 +627,8 @@ function CountChip({ label, done, total, tone = "ink" }: { label: string; done: 
         complete
           ? "bg-emerald-50 text-emerald-700"
           : tone === "violet"
-          ? "bg-violet-100 text-violet-700"
-          : "bg-ink-100 text-ink-500"
+            ? "bg-violet-100 text-violet-700"
+            : "bg-ink-100 text-ink-500"
       )}
     >
       <span className={tone === "violet" && !complete ? "text-violet-500" : "text-ink-400"}>{label}</span>

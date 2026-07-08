@@ -14,7 +14,6 @@ import { PersonForm, emptyPerson, type PersonDraft } from "@/components/forms/Pe
 import { useStore } from "@/lib/store";
 import { useLoaded, useWeeks, useFacets, useScope } from "@/lib/hooks";
 import { consistencyByName, reportsCountByName, norm, isTopLeader, expectsSubmission, computeLevel } from "@/lib/org";
-import { sendNudge } from "@/lib/nudge";
 import { exportPeopleCSV, exportPeopleFullCSV, type PeopleExportRow } from "@/lib/export";
 import { cn, formatDate, weekShort, normalizePhone, isValidPhone } from "@/lib/utils";
 import type { Person } from "@/lib/types";
@@ -92,7 +91,7 @@ export default function PeoplePage() {
     const hierarchical: any[] = [];
     const teamLeadEntries = entries.filter((e) => e.reports > 0);
     const processed = new Set<string>();
-    
+
     // Build map of who reports to whom
     const reportedBy = new Map<string, typeof entries>();
     entries.forEach((e) => {
@@ -106,10 +105,10 @@ export default function PeoplePage() {
     // Recursive function to add person and their reports
     const addPersonAndReports = (entry: typeof entries[0], level: number) => {
       if (processed.has(entry.key)) return;
-      
+
       const isTopLevel = !entry.teamLead || entry.department === 'Leadership';
-      hierarchical.push({ 
-        ...entry, 
+      hierarchical.push({
+        ...entry,
         level,
         isTeamLead: entry.reports > 0,
         isTopLevel,
@@ -186,9 +185,17 @@ export default function PeoplePage() {
   async function handleSendNudge() {
     if (!nudgePerson) return;
     setNudgeState("sending");
-    const ok = await sendNudge(nudgePerson.name, nudgePerson.phone);
-    setNudgeState(ok ? "sent" : "error");
-    if (ok) setTimeout(() => setNudgePerson(null), 1200);
+    try {
+      const res = await fetch("/api/nudge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: nudgePerson.name, phone: nudgePerson.phone }),
+      });
+      setNudgeState(res.ok ? "sent" : "error");
+      if (res.ok) setTimeout(() => setNudgePerson(null), 1200);
+    } catch {
+      setNudgeState("error");
+    }
   }
 
   return (
@@ -281,229 +288,229 @@ export default function PeoplePage() {
           <EmptyState icon={Users} title="No people found" description="Adjust filters or add a person." />
         ) : (
           <>
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-ink-100 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
-                  <th className="px-5 py-3">Person</th>
-                  <th className="px-3 py-3">Phone</th>
-                  <th className="px-3 py-3">Team lead</th>
-                  <th className="px-3 py-3">Department</th>
-                  <th className="px-3 py-3">Last submission</th>
-                  <th className="px-3 py-3 w-48">Consistency</th>
-                  <th className="px-5 py-3 text-right"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-ink-100">
-                {rows.map((e: any) => {
-                  const level = e.level || 0;
-                  const levelColors = [
-                    { bg: "bg-violet-50", border: "border-l-violet-500", badge: "bg-violet-600" },
-                    { bg: "bg-blue-50", border: "border-l-blue-500", badge: "bg-blue-600" },
-                    { bg: "bg-sky-50", border: "border-l-sky-500", badge: "bg-sky-600" },
-                    { bg: "bg-teal-50", border: "border-l-teal-500", badge: "bg-teal-600" },
-                  ];
-                  const color = levelColors[Math.min(level, levelColors.length - 1)];
-                  const indent = level * 24; // Full indentation for all levels
-                  
-                  return (
-                    <tr 
-                      key={e.key} 
-                      className={cn(
-                        "group hover:bg-ink-50/60 border-l-4",
-                        e.isTopLevel ? "border-l-violet-500 bg-violet-25" : color.border
-                      )}
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2.5" style={{ paddingLeft: `${indent}px` }}>
-                          {level > 0 && (
-                            <span className="text-ink-300 text-xs">
-                              {"└─"}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-ink-100 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
+                    <th className="px-5 py-3">Person</th>
+                    <th className="px-3 py-3">Phone</th>
+                    <th className="px-3 py-3">Team lead</th>
+                    <th className="px-3 py-3">Department</th>
+                    <th className="px-3 py-3">Last submission</th>
+                    <th className="px-3 py-3 w-48">Consistency</th>
+                    <th className="px-5 py-3 text-right"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-ink-100">
+                  {rows.map((e: any) => {
+                    const level = e.level || 0;
+                    const levelColors = [
+                      { bg: "bg-violet-50", border: "border-l-violet-500", badge: "bg-violet-600" },
+                      { bg: "bg-blue-50", border: "border-l-blue-500", badge: "bg-blue-600" },
+                      { bg: "bg-sky-50", border: "border-l-sky-500", badge: "bg-sky-600" },
+                      { bg: "bg-teal-50", border: "border-l-teal-500", badge: "bg-teal-600" },
+                    ];
+                    const color = levelColors[Math.min(level, levelColors.length - 1)];
+                    const indent = level * 24; // Full indentation for all levels
+
+                    return (
+                      <tr
+                        key={e.key}
+                        className={cn(
+                          "group hover:bg-ink-50/60 border-l-4",
+                          e.isTopLevel ? "border-l-violet-500 bg-violet-25" : color.border
+                        )}
+                      >
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2.5" style={{ paddingLeft: `${indent}px` }}>
+                            {level > 0 && (
+                              <span className="text-ink-300 text-xs">
+                                {"└─"}
+                              </span>
+                            )}
+                            <Avatar name={e.name} color={e.avatarColor} size="sm" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-ink-800">{e.name}</p>
+                                {e.reports > 0 && (
+                                  <span className="text-[10px] text-ink-500 font-medium">
+                                    ({e.reports} report{e.reports > 1 ? "s" : ""})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-ink-400">{e.title || (e.isLead ? "Team lead" : "Team member")}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {e.phone ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-ink-500">
+                              <Phone size={12} className="shrink-0" /> {e.phone}
                             </span>
+                          ) : (
+                            <span className="text-xs text-ink-300">—</span>
                           )}
-                          <Avatar name={e.name} color={e.avatarColor} size="sm" />
-                          <div>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap text-ink-600">
+                          {e.isTopLevel ? (
+                            <span className="text-xs text-ink-300 italic">—</span>
+                          ) : e.reportingTo ? (
+                            <span className={cn("font-medium text-xs", level === 1 ? "text-violet-600" : "text-blue-600")}>
+                              {e.reportingTo}
+                            </span>
+                          ) : e.teamLead ? (
+                            <span className="text-ink-600 text-xs">{e.teamLead}</span>
+                          ) : (
+                            <span className="text-ink-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3 text-ink-600">{e.department}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-ink-500">
+                          {e.c.lastSubmission ? (
+                            formatDate(e.c.lastSubmission.submittedAt)
+                          ) : (
+                            <span className="text-ink-300">{e.isLead ? "—" : "Never"}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          {e.c.count > 0 ? (
                             <div className="flex items-center gap-2">
+                              <div className="flex gap-0.5">
+                                {e.c.perWeek.map((w: any) => (
+                                  <span
+                                    key={w.week}
+                                    title={`${weekShort(w.week)} · ${w.submitted ? "submitted" : "missing"}`}
+                                    className={cn("h-4 w-2.5 rounded-sm", w.submitted ? "bg-emerald-400" : "bg-ink-200")}
+                                  />
+                                ))}
+                              </div>
+                              <span className={cn("text-xs font-semibold tabular-nums", e.c.rate >= 80 ? "text-emerald-600" : e.c.rate >= 50 ? "text-amber-600" : "text-rose-600")}>
+                                {e.c.rate}%
+                              </span>
+                            </div>
+                          ) : e.isLead ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">
+                              Team lead{e.reports ? ` · ${e.reports} report${e.reports > 1 ? "s" : ""}` : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-ink-300">No submissions</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          {e.person && (
+                            <div className="flex items-center justify-end gap-0.5 opacity-0 transition group-hover:opacity-100">
+                              <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
+                                <Pencil size={15} />
+                              </button>
+                              {!e.isTopLevel && (
+                                <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile / tablet: stacked cards instead of a wide table */}
+            <ul className="divide-y divide-ink-100 lg:hidden">
+              {rows.map((e: any) => {
+                const level = e.level || 0;
+                const levelColors = [
+                  "border-l-violet-500",
+                  "border-l-blue-500",
+                  "border-l-sky-500",
+                  "border-l-teal-500",
+                ];
+                const border = e.isTopLevel
+                  ? "border-l-violet-500"
+                  : levelColors[Math.min(level, levelColors.length - 1)];
+                return (
+                  <li key={e.key} className={cn("border-l-4 px-4 py-3.5", border)}>
+                    <div className="flex items-start gap-3">
+                      <Avatar name={e.name} color={e.avatarColor} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                               <p className="font-medium text-ink-800">{e.name}</p>
                               {e.reports > 0 && (
-                                <span className="text-[10px] text-ink-500 font-medium">
+                                <span className="text-[10px] font-medium text-ink-500">
                                   ({e.reports} report{e.reports > 1 ? "s" : ""})
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-ink-400">{e.title || (e.isLead ? "Team lead" : "Team member")}</p>
+                            <p className="text-[11px] text-ink-400">
+                              {e.title || (e.isLead ? "Team lead" : "Team member")}
+                            </p>
                           </div>
-                        </div>
-                      </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      {e.phone ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-ink-500">
-                          <Phone size={12} className="shrink-0" /> {e.phone}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-ink-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-ink-600">
-                      {e.isTopLevel ? (
-                        <span className="text-xs text-ink-300 italic">—</span>
-                      ) : e.reportingTo ? (
-                        <span className={cn("font-medium text-xs", level === 1 ? "text-violet-600" : "text-blue-600")}>
-                          {e.reportingTo}
-                        </span>
-                      ) : e.teamLead ? (
-                        <span className="text-ink-600 text-xs">{e.teamLead}</span>
-                      ) : (
-                        <span className="text-ink-300">—</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-ink-600">{e.department}</td>
-                    <td className="px-3 py-3 whitespace-nowrap text-ink-500">
-                      {e.c.lastSubmission ? (
-                        formatDate(e.c.lastSubmission.submittedAt)
-                      ) : (
-                        <span className="text-ink-300">{e.isLead ? "—" : "Never"}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3">
-                      {e.c.count > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex gap-0.5">
-                            {e.c.perWeek.map((w: any) => (
-                              <span
-                                key={w.week}
-                                title={`${weekShort(w.week)} · ${w.submitted ? "submitted" : "missing"}`}
-                                className={cn("h-4 w-2.5 rounded-sm", w.submitted ? "bg-emerald-400" : "bg-ink-200")}
-                              />
-                            ))}
-                          </div>
-                          <span className={cn("text-xs font-semibold tabular-nums", e.c.rate >= 80 ? "text-emerald-600" : e.c.rate >= 50 ? "text-amber-600" : "text-rose-600")}>
-                            {e.c.rate}%
-                          </span>
-                        </div>
-                      ) : e.isLead ? (
-                        <span className="inline-flex items-center gap-1 rounded-md bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">
-                          Team lead{e.reports ? ` · ${e.reports} report${e.reports > 1 ? "s" : ""}` : ""}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-ink-300">No submissions</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {e.person && (
-                        <div className="flex items-center justify-end gap-0.5 opacity-0 transition group-hover:opacity-100">
-                          <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
-                            <Pencil size={15} />
-                          </button>
-                          {!e.isTopLevel && (
-                            <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                              <Trash2 size={15} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile / tablet: stacked cards instead of a wide table */}
-          <ul className="divide-y divide-ink-100 lg:hidden">
-            {rows.map((e: any) => {
-              const level = e.level || 0;
-              const levelColors = [
-                "border-l-violet-500",
-                "border-l-blue-500",
-                "border-l-sky-500",
-                "border-l-teal-500",
-              ];
-              const border = e.isTopLevel
-                ? "border-l-violet-500"
-                : levelColors[Math.min(level, levelColors.length - 1)];
-              return (
-                <li key={e.key} className={cn("border-l-4 px-4 py-3.5", border)}>
-                  <div className="flex items-start gap-3">
-                    <Avatar name={e.name} color={e.avatarColor} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            <p className="font-medium text-ink-800">{e.name}</p>
-                            {e.reports > 0 && (
-                              <span className="text-[10px] font-medium text-ink-500">
-                                ({e.reports} report{e.reports > 1 ? "s" : ""})
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-ink-400">
-                            {e.title || (e.isLead ? "Team lead" : "Team member")}
-                          </p>
-                        </div>
-                        {e.person && (
-                          <div className="flex shrink-0 items-center gap-0.5">
-                            <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
-                              <Pencil size={15} />
-                            </button>
-                            {!e.isTopLevel && (
-                              <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
-                                <Trash2 size={15} />
+                          {e.person && (
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <button onClick={() => openEdit(e.person!)} className="rounded-lg p-1.5 text-ink-400 hover:bg-ink-100 hover:text-ink-700">
+                                <Pencil size={15} />
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                        <div className="col-span-2 flex items-center gap-1 text-ink-600">
-                          {e.phone ? (
-                            <>
-                              <Phone size={12} className="shrink-0 text-ink-400" />
-                              <span className="truncate">{e.phone}</span>
-                            </>
-                          ) : (
-                            <span className="text-ink-300">No phone</span>
+                              {!e.isTopLevel && (
+                                <button onClick={() => setDeleteId(e.person!._id)} className="rounded-lg p-1.5 text-ink-400 hover:bg-rose-50 hover:text-rose-600">
+                                  <Trash2 size={15} />
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div>
-                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Team lead</dt>
-                          <dd className="text-ink-600">
-                            {e.isTopLevel ? "—" : e.reportingTo || e.teamLead || "—"}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Department</dt>
-                          <dd className="text-ink-600">{e.department || "—"}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Last submission</dt>
-                          <dd className="text-ink-600">
-                            {e.c.lastSubmission ? formatDate(e.c.lastSubmission.submittedAt) : (e.isLead ? "—" : "Never")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-[10px] uppercase tracking-wide text-ink-400">Consistency</dt>
-                          <dd>
-                            {e.c.count > 0 ? (
-                              <span className={cn("font-semibold tabular-nums", e.c.rate >= 80 ? "text-emerald-600" : e.c.rate >= 50 ? "text-amber-600" : "text-rose-600")}>
-                                {e.c.rate}%
-                              </span>
-                            ) : e.isLead ? (
-                              <span className="text-violet-700">Team lead</span>
+
+                        <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                          <div className="col-span-2 flex items-center gap-1 text-ink-600">
+                            {e.phone ? (
+                              <>
+                                <Phone size={12} className="shrink-0 text-ink-400" />
+                                <span className="truncate">{e.phone}</span>
+                              </>
                             ) : (
-                              <span className="text-ink-300">None</span>
+                              <span className="text-ink-300">No phone</span>
                             )}
-                          </dd>
-                        </div>
-                      </dl>
+                          </div>
+                          <div>
+                            <dt className="text-[10px] uppercase tracking-wide text-ink-400">Team lead</dt>
+                            <dd className="text-ink-600">
+                              {e.isTopLevel ? "—" : e.reportingTo || e.teamLead || "—"}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[10px] uppercase tracking-wide text-ink-400">Department</dt>
+                            <dd className="text-ink-600">{e.department || "—"}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-[10px] uppercase tracking-wide text-ink-400">Last submission</dt>
+                            <dd className="text-ink-600">
+                              {e.c.lastSubmission ? formatDate(e.c.lastSubmission.submittedAt) : (e.isLead ? "—" : "Never")}
+                            </dd>
+                          </div>
+                          <div>
+                            <dt className="text-[10px] uppercase tracking-wide text-ink-400">Consistency</dt>
+                            <dd>
+                              {e.c.count > 0 ? (
+                                <span className={cn("font-semibold tabular-nums", e.c.rate >= 80 ? "text-emerald-600" : e.c.rate >= 50 ? "text-amber-600" : "text-rose-600")}>
+                                  {e.c.rate}%
+                                </span>
+                              ) : e.isLead ? (
+                                <span className="text-violet-700">Team lead</span>
+                              ) : (
+                                <span className="text-ink-300">None</span>
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                  </li>
+                );
+              })}
+            </ul>
           </>
         )}
       </Card>

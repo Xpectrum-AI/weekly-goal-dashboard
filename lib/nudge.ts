@@ -4,9 +4,8 @@
 // the People & Teams post-save reminder.
 // ───────────────────────────────────────────────────────────────────────────
 
-const WHATSAPP_PHONE_ID = "1139797872553332";
-const WHATSAPP_TOKEN =
-  "EAA66pZAqI130BRgV7FrZBIGpjpx3ScLZCdouf4u783MQ8Kkgr4AEOIaXaJHHZCwAhFhteVLnL3OwYITvv5kqZCYzgd6n840Jh08kERjvNXQuU1nq63oVeHxRdDINZBuUZCckpmjwGUByZB4HZBmzkY7Rjye8UFjgqElTC4LGij9ojhe6ac0WRKWjdqNaZCZCPL2w5MekvrBj7WzUjyGgdRrtJLFqZCKZBQ7RdDepPR4bj";
+const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID;
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 
 /**
  * Notify a person on WhatsApp that a priority task was assigned to them.
